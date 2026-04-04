@@ -77,7 +77,7 @@ export class Gateway {
         const reply = await think(this.buildTurn(msg.content, "discord", project));
 
         for (const chunk of splitMessage(reply, 2000)) {
-          await msg.reply(chunk);
+          await msg.channel.send(chunk);
         }
       } finally {
         clearInterval(typingInterval);
