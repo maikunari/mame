@@ -1,8 +1,12 @@
 // src/memory.ts — SQLite + FTS5 memory (~50 lines per spec)
 
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import fs from "fs";
 import path from "path";
 import { MAME_HOME } from "./config.js";
+
+// Ensure ~/.mame/ exists before opening the database
+fs.mkdirSync(MAME_HOME, { recursive: true });
 
 const db: DatabaseType = new Database(path.join(MAME_HOME, "memory.db"));
 
