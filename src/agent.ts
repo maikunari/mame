@@ -119,7 +119,3 @@ async function maybeRemember(
   // Auto-extraction happens in improve.ts after complex tasks.
 }
 
-function pickModel(turn: Turn): string {
-  if (turn.channel === "heartbeat") return turn.model; // Already set by heartbeat scheduler
-  return turn.model;
-}
