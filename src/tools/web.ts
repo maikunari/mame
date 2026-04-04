@@ -5,6 +5,13 @@
 import { execFile } from "child_process";
 import { registerTool, type ToolContext } from "./index.js";
 
+// Public Nitter instances for X/Twitter access without login
+const NITTER_INSTANCES = [
+  "nitter.poast.org",
+  "nitter.woodland.cafe",
+  "nitter.1d4.us",
+];
+
 registerTool({
   definition: {
     name: "web_search",
@@ -70,9 +77,31 @@ registerTool({
     },
   },
   async execute(input: Record<string, unknown>, _ctx: ToolContext) {
-    const url = input.url as string;
+    let url = input.url as string;
 
-    // Use agent-browser as the default — handles JS-heavy sites (Substack, X, SPAs)
+    // X/Twitter: try Nitter first (no login required), fall back to authenticated browser
+    const xMatch = url.match(/^https?:\/\/(x\.com|twitter\.com)\/(.+)/);
+    if (xMatch) {
+      const nitterUrl = `https://nitter.privacydev.net/${xMatch[2]}`;
+      console.log(`[web_fetch] X/Twitter URL detected, trying Nitter: ${nitterUrl}`);
+      const nitterResult = await fetchViaBrowser(nitterUrl);
+      if (nitterResult.text && (nitterResult.text as string).length > 200) {
+        return { ...nitterResult, url, note: "Fetched via Nitter (Twitter mirror)" };
+      }
+      // Nitter failed — try other Nitter instances
+      for (const instance of NITTER_INSTANCES) {
+        const altUrl = `https://${instance}/${xMatch[2]}`;
+        console.log(`[web_fetch] Trying Nitter instance: ${instance}`);
+        const altResult = await fetchViaBrowser(altUrl);
+        if (altResult.text && (altResult.text as string).length > 200) {
+          return { ...altResult, url, note: `Fetched via Nitter (${instance})` };
+        }
+      }
+      // All Nitter instances failed — fall through to direct browser with auth
+      console.log(`[web_fetch] All Nitter instances failed, trying direct X with browser`);
+    }
+
+    // Use agent-browser as the default — handles JS-heavy sites
     const result = await fetchViaBrowser(url);
 
     // If browser failed (not installed, crashed), fall back to plain fetch
