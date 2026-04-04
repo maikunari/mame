@@ -67,10 +67,20 @@ export class Gateway {
 
       const project = channelMap[msg.channelId] || undefined;
 
-      const reply = await think(this.buildTurn(msg.content, "discord", project));
+      // Show typing indicator while thinking (refreshes every 8s, Discord typing lasts 10s)
+      await msg.channel.sendTyping();
+      const typingInterval = setInterval(() => {
+        msg.channel.sendTyping().catch(() => {});
+      }, 8000);
 
-      for (const chunk of splitMessage(reply, 2000)) {
-        await msg.reply(chunk);
+      try {
+        const reply = await think(this.buildTurn(msg.content, "discord", project));
+
+        for (const chunk of splitMessage(reply, 2000)) {
+          await msg.reply(chunk);
+        }
+      } finally {
+        clearInterval(typingInterval);
       }
     });
 
