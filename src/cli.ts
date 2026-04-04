@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   switch (command) {
     case "init": {
       const isPersona = args.includes("--persona");
-      const model = process.env.MAME_ONBOARD_MODEL || "claude-sonnet-4-6-20250514";
+      const model = process.env.MAME_ONBOARD_MODEL || "google/gemini-3.1-flash-lite-preview";
       if (isPersona) {
         console.log("Adding a new persona...\n");
       }
