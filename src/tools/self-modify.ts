@@ -56,7 +56,8 @@ RULES:
         async (error, stdout, stderr) => {
           if (!error && restart) {
             try {
-              execSync("pm2 restart mame-gateway", { stdio: "ignore" });
+              // Restart all personas — the calling persona's name isn't available here
+              execSync("pm2 restart all", { stdio: "ignore" });
             } catch {
               // pm2 might not be running in dev mode
             }

@@ -96,6 +96,12 @@ export async function executeToolCalls(
       continue;
     }
 
+    // TODO: For production, enforce a hard approval gate here when
+    // handler.requiresApproval is true. Currently the SOUL.md instructs
+    // the agent to ask for confirmation, but there's no programmatic block.
+    // The gate should pause execution and request user confirmation via
+    // the gateway before proceeding.
+
     try {
       const result = await withRetry(
         () => handler.execute(block.input as Record<string, unknown>, { turn })
