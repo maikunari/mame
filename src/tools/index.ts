@@ -4,6 +4,16 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { Turn } from "../agent.js";
 import type { ToolDefinition } from "../model-router.js";
 
+// Import all tool registrations (side-effect imports)
+import "./browser.js";
+import "./web.js";
+import "./github.js";
+import "./email.js";
+import "./claude-code.js";
+import "./memory-tool.js";
+import "./report.js";
+import "./self-modify.js";
+
 export interface ToolContext {
   turn: Turn;
 }
