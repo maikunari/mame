@@ -1,0 +1,142 @@
+// src/memory.ts — SQLite + FTS5 memory (~50 lines per spec)
+
+import Database, { type Database as DatabaseType } from "better-sqlite3";
+import path from "path";
+import { MAME_HOME } from "./config.js";
+
+const db: DatabaseType = new Database(path.join(MAME_HOME, "memory.db"));
+
+// Enable WAL mode for better concurrent read performance
+db.pragma("journal_mode = WAL");
+
+// Schema — one table, one FTS5 index with content= auto-sync
+db.exec(`
+  CREATE TABLE IF NOT EXISTS memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    project TEXT,
+    category TEXT DEFAULT 'general',
+    importance REAL DEFAULT 0.5,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_accessed DATETIME,
+    access_count INTEGER DEFAULT 0
+  );
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts
+    USING fts5(content, project, category, content=memories, content_rowid=id);
+
+  -- Triggers to keep FTS5 in sync with the memories table
+  CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+    INSERT INTO memories_fts(rowid, content, project, category)
+    VALUES (new.id, new.content, new.project, new.category);
+  END;
+
+  CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content, project, category)
+    VALUES ('delete', old.id, old.content, old.project, old.category);
+  END;
+
+  CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content, project, category)
+    VALUES ('delete', old.id, old.content, old.project, old.category);
+    INSERT INTO memories_fts(rowid, content, project, category)
+    VALUES (new.id, new.content, new.project, new.category);
+  END;
+`);
+
+export interface Memory {
+  id: number;
+  content: string;
+  project: string | null;
+  category: string;
+  importance: number;
+  created_at: string;
+  last_accessed: string | null;
+  access_count: number;
+}
+
+export async function remember(
+  content: string,
+  project?: string,
+  category?: string,
+  importance?: number
+): Promise<number> {
+  const result = db.prepare(
+    "INSERT INTO memories (content, project, category, importance) VALUES (?, ?, ?, ?)"
+  ).run(content, project || null, category || "general", importance || 0.5);
+  return result.lastInsertRowid as number;
+}
+
+export async function recall(
+  query: string,
+  project?: string,
+  limit = 10
+): Promise<Memory[]> {
+  const results = db
+    .prepare(
+      `
+    SELECT m.*, rank
+    FROM memories_fts fts
+    JOIN memories m ON m.id = fts.rowid
+    WHERE memories_fts MATCH ?
+    ${project ? "AND m.project = ?" : ""}
+    ORDER BY rank * 0.6
+           + (1.0 / (1 + julianday('now') - julianday(m.created_at))) * 0.2
+           + (m.access_count * 0.01) * 0.2
+    LIMIT ?
+  `
+    )
+    .all(...(project ? [query, project, limit] : [query, limit])) as (Memory & { rank: number })[];
+
+  // Update access stats
+  const updateStmt = db.prepare(
+    "UPDATE memories SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?"
+  );
+  for (const r of results) {
+    updateStmt.run(r.id);
+  }
+
+  return results;
+}
+
+export async function forget(id: number): Promise<void> {
+  db.prepare("DELETE FROM memories WHERE id = ?").run(id);
+}
+
+export async function listMemories(
+  project?: string,
+  limit = 20
+): Promise<Memory[]> {
+  if (project) {
+    return db
+      .prepare("SELECT * FROM memories WHERE project = ? ORDER BY created_at DESC LIMIT ?")
+      .all(project, limit) as Memory[];
+  }
+  return db
+    .prepare("SELECT * FROM memories ORDER BY created_at DESC LIMIT ?")
+    .all(limit) as Memory[];
+}
+
+export async function memoryStats(): Promise<{
+  total: number;
+  byCategory: Record<string, number>;
+  byProject: Record<string, number>;
+}> {
+  const total = (db.prepare("SELECT COUNT(*) as count FROM memories").get() as any).count;
+
+  const categories = db
+    .prepare("SELECT category, COUNT(*) as count FROM memories GROUP BY category")
+    .all() as { category: string; count: number }[];
+
+  const projects = db
+    .prepare("SELECT COALESCE(project, 'global') as project, COUNT(*) as count FROM memories GROUP BY project")
+    .all() as { project: string; count: number }[];
+
+  return {
+    total,
+    byCategory: Object.fromEntries(categories.map((c) => [c.category, c.count])),
+    byProject: Object.fromEntries(projects.map((p) => [p.project, p.count])),
+  };
+}
+
+export { db };
