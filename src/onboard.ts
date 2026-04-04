@@ -122,7 +122,9 @@ export async function runOnboarding(model: string): Promise<void> {
   const ask = (prompt: string): Promise<string> =>
     new Promise((resolve) => rl.question(prompt, resolve));
 
-  const messages: ChatMessage[] = [];
+  const messages: ChatMessage[] = [
+    { role: "user", content: "Start the onboarding interview." },
+  ];
 
   // Start the conversation
   let response = await chatCompletion(
