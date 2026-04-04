@@ -7,6 +7,7 @@ import { MAME_HOME, loadConfig } from "./config.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
+import { loadTools } from "./tools/index.js";
 import readline from "readline";
 import path from "path";
 import fs from "fs";
@@ -15,6 +16,8 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 async function main(): Promise<void> {
+  // Load all tool registrations
+  await loadTools();
   switch (command) {
     case "init": {
       const isPersona = args.includes("--persona");

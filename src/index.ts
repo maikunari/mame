@@ -4,8 +4,11 @@ import { loadConfig, loadPersona } from "./config.js";
 import { Gateway } from "./gateway.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
 import { Vault } from "./vault.js";
+import { loadTools } from "./tools/index.js";
 
 async function main(): Promise<void> {
+  // Load all tool registrations before anything else
+  await loadTools();
   // Parse --persona flag
   const personaArg = process.argv.find((a) => a.startsWith("--persona"));
   let personaName: string;

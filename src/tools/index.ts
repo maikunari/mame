@@ -1,4 +1,4 @@
-// src/tools/index.ts — Tool registry + executor (~40 lines per spec)
+// src/tools/index.ts — Tool registry + executor
 
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Turn } from "../agent.js";
@@ -14,11 +14,26 @@ interface ToolHandler {
   requiresApproval?: boolean;
 }
 
-// Tool registry — populated by individual tool modules
+// Tool registry — populated by loadTools()
 const tools = new Map<string, ToolHandler>();
 
 export function registerTool(handler: ToolHandler): void {
   tools.set(handler.definition.name, handler);
+}
+
+// Lazy tool loading — must be called once before using tools
+let toolsLoaded = false;
+export async function loadTools(): Promise<void> {
+  if (toolsLoaded) return;
+  toolsLoaded = true;
+  await import("./browser.js");
+  await import("./web.js");
+  await import("./github.js");
+  await import("./email.js");
+  await import("./claude-code.js");
+  await import("./memory-tool.js");
+  await import("./report.js");
+  await import("./self-modify.js");
 }
 
 export function getToolDefinitions(enabledTools: string[]): ToolDefinition[] {
@@ -120,14 +135,3 @@ export async function executeToolCalls(
 
   return results;
 }
-
-// Import all tool registrations (side-effect imports)
-// These must be at the bottom so the tools Map and registerTool are defined first.
-import "./browser.js";
-import "./web.js";
-import "./github.js";
-import "./email.js";
-import "./claude-code.js";
-import "./memory-tool.js";
-import "./report.js";
-import "./self-modify.js";
