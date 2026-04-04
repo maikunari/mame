@@ -115,8 +115,8 @@ function stripHtml(html: string): string {
 
 function fetchViaBrowser(url: string): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
-    // Open the page in agent-browser, wait for JS to render, extract text
-    const openArgs = ["open", url];
+    // Open the page in agent-browser with --no-sandbox for headless Linux servers
+    const openArgs = ["--no-sandbox", "open", url];
     execFile("agent-browser", openArgs, { timeout: 30000 }, (openErr, _openOut, openStderr) => {
       if (openErr) {
         resolve({ error: `Browser failed to open: ${openStderr || openErr.message}`, method: "browser" });
@@ -125,7 +125,7 @@ function fetchViaBrowser(url: string): Promise<Record<string, unknown>> {
 
       // Wait a moment for JS to render, then extract text
       setTimeout(() => {
-        execFile("agent-browser", ["extract", "--text"], { timeout: 15000 }, (extErr, extOut, extStderr) => {
+        execFile("agent-browser", ["--no-sandbox", "extract", "--text"], { timeout: 15000 }, (extErr, extOut, extStderr) => {
           if (extErr) {
             resolve({ error: `Browser extract failed: ${extStderr || extErr.message}`, method: "browser" });
             return;

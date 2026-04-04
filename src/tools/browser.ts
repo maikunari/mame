@@ -49,7 +49,7 @@ registerTool({
     const ref = input.ref as string | undefined;
     const text = input.text as string | undefined;
 
-    const args: string[] = [];
+    const args: string[] = ["--no-sandbox"]; // Required for headless Linux servers
 
     // Use persistent profile if specified
     if (profile) {
