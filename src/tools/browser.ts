@@ -87,7 +87,7 @@ registerTool({
         args.push("type", ref, text);
         break;
       case "extract":
-        args.push("extract", "--text");
+        args.push("get", "text", "body");
         break;
       case "scroll":
         args.push("scroll", text || "down");
