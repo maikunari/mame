@@ -71,36 +71,55 @@ export async function remember(
   return result.lastInsertRowid as number;
 }
 
+// Sanitize input for FTS5 — quote each term to avoid syntax errors from special chars
+function sanitizeFts5Query(query: string): string {
+  // Split into words, wrap each in double quotes to escape FTS5 operators
+  const terms = query
+    .replace(/[^\w\s]/g, " ")  // Strip punctuation
+    .split(/\s+/)
+    .filter((t) => t.length > 0)
+    .map((t) => `"${t}"`);
+  return terms.join(" ");
+}
+
 export async function recall(
   query: string,
   project?: string,
   limit = 10
 ): Promise<Memory[]> {
-  const results = db
-    .prepare(
-      `
-    SELECT m.*, rank
-    FROM memories_fts fts
-    JOIN memories m ON m.id = fts.rowid
-    WHERE memories_fts MATCH ?
-    ${project ? "AND m.project = ?" : ""}
-    ORDER BY rank * 0.6
-           + (1.0 / (1 + julianday('now') - julianday(m.created_at))) * 0.2
-           + (m.access_count * 0.01) * 0.2
-    LIMIT ?
-  `
-    )
-    .all(...(project ? [query, project, limit] : [query, limit])) as (Memory & { rank: number })[];
+  const ftsQuery = sanitizeFts5Query(query);
+  if (!ftsQuery) return []; // No searchable terms
 
-  // Update access stats
-  const updateStmt = db.prepare(
-    "UPDATE memories SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?"
-  );
-  for (const r of results) {
-    updateStmt.run(r.id);
+  try {
+    const results = db
+      .prepare(
+        `
+      SELECT m.*, rank
+      FROM memories_fts fts
+      JOIN memories m ON m.id = fts.rowid
+      WHERE memories_fts MATCH ?
+      ${project ? "AND m.project = ?" : ""}
+      ORDER BY rank * 0.6
+             + (1.0 / (1 + julianday('now') - julianday(m.created_at))) * 0.2
+             + (m.access_count * 0.01) * 0.2
+      LIMIT ?
+    `
+      )
+      .all(...(project ? [ftsQuery, project, limit] : [ftsQuery, limit])) as (Memory & { rank: number })[];
+
+    // Update access stats
+    const updateStmt = db.prepare(
+      "UPDATE memories SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?"
+    );
+    for (const r of results) {
+      updateStmt.run(r.id);
+    }
+
+    return results;
+  } catch {
+    // FTS5 query can fail on empty tables or edge cases — return empty
+    return [];
   }
-
-  return results;
 }
 
 export async function forget(id: number): Promise<void> {
