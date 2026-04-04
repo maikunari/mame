@@ -1,4 +1,4 @@
-# Mame まめ: Minimal Persistent Agent
+# Mame まめ: Minimal Persistent Agent — v0.1.2
 
 **A thin orchestration layer that connects you to Claude Code, the web, your repos, and your email — and gets smarter over time.**
 
@@ -57,62 +57,69 @@ const anthropic = new Anthropic();
 
 interface Turn {
   message: string;
-  channel: string;        // 'discord' | 'email' | 'webhook' | 'cli'
+  channel: string;        // 'discord' | 'line' | 'email' | 'webhook' | 'cli' | 'heartbeat'
   project?: string;       // matched project context, if any
+  personaId: string;      // persona name for conversation buffer keying
+  soulFile: string;       // path to SOUL.md
+  model: string;          // model string (routed by prefix: google/, openrouter/, or direct)
+  tools: string[];        // enabled tool names for this persona
 }
+
+// Conversation buffer keyed by personaId:channelId — last ~20 messages
+// TODO: optional SQLite persistence for non-technical personas who need cross-restart continuity
+const conversationBuffer = new Map<string, ChatMessage[]>();
+const MAX_BUFFER_SIZE = 20;
 
 async function think(turn: Turn): Promise<string> {
-  // 1. Recall relevant memories
-  const memories = await recall(turn.message, turn.project);
+  try {
+    // 1. Recall relevant memories
+    const memories = await recall(turn.message, turn.project);
 
-  // 2. Load project context if matched
-  const projectContext = turn.project
-    ? await loadProjectContext(turn.project)
-    : "";
+    // 2. Load project context if matched
+    const projectContext = turn.project
+      ? await loadProjectContext(turn.project)
+      : "";
 
-  // 3. Assemble system prompt
-  const system = buildSystemPrompt({ memories, projectContext });
+    // 3. Assemble system prompt
+    const soul = loadSoul(turn.soulFile);
+    const system = buildSystemPrompt({ soul, memories, projectContext });
 
-  // 4. Run agent loop with tools
-  const messages = [{ role: "user" as const, content: turn.message }];
-  let response = await anthropic.messages.create({
-    model: pickModel(turn),
-    max_tokens: 8096,
-    system,
-    messages,
-    tools: TOOL_DEFINITIONS,
-  });
+    // 4. Build messages with conversation history
+    const bufferKey = `${turn.personaId}:${turn.channel}:${turn.project || "global"}`;
+    const history = conversationBuffer.get(bufferKey) || [];
+    const messages = [...history, { role: "user" as const, content: turn.message }];
 
-  // 5. Execute tool calls until done
-  while (response.stop_reason === "tool_use") {
-    const toolResults = await executeToolCalls(response.content);
-    messages.push({ role: "assistant" as const, content: response.content });
-    messages.push({ role: "user" as const, content: toolResults });
-    response = await anthropic.messages.create({
-      model: pickModel(turn),
-      max_tokens: 8096,
-      system,
-      messages,
-      tools: TOOL_DEFINITIONS,
-    });
+    // 5. Run agent loop with tools (model routed by prefix)
+    const tools = getToolDefinitions(turn.tools);
+    let response = await chatCompletion(turn.model, system, messages, tools);
+
+    // 6. Execute tool calls until done
+    while (response.stop_reason === "tool_use") {
+      const toolResults = await executeToolCalls(response.content, turn);
+      messages.push({ role: "assistant" as const, content: response.content });
+      messages.push({ role: "user" as const, content: toolResults });
+      response = await chatCompletion(turn.model, system, messages, tools);
+    }
+
+    // 7. Extract text response
+    const reply = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+
+    // 8. Update conversation buffer
+    const updatedHistory = [...history, { role: "user", content: turn.message }, { role: "assistant", content: reply }];
+    conversationBuffer.set(bufferKey, updatedHistory.slice(-MAX_BUFFER_SIZE));
+
+    // 9. Remember what happened (agent decides what's worth storing)
+    await maybeRemember(turn.message, reply, turn.project);
+
+    return reply;
+  } catch (error) {
+    // Outer catch — keeps the daemon alive
+    console.error(`[agent] think() error: ${error}`);
+    return `Something went wrong: ${error instanceof Error ? error.message : error}`;
   }
-
-  // 6. Extract text response
-  const reply = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
-
-  // 7. Remember what happened (agent decides what's worth storing)
-  await maybeRemember(turn.message, reply, turn.project);
-
-  return reply;
-}
-
-function pickModel(turn: Turn): string {
-  if (turn.channel === "heartbeat") return "claude-haiku-4-5-20251001";
-  return "claude-sonnet-4-6-20250514";
-  // Opus escalation happens inside tool calls when needed
 }
 ```
 
@@ -477,7 +484,7 @@ import Database from "better-sqlite3";
 
 const db = new Database(`${MAME_HOME}/memory.db`);
 
-// Schema — one table, one FTS5 index
+// Schema — one table, one FTS5 index with content= auto-sync
 db.exec(`
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -489,8 +496,27 @@ db.exec(`
     last_accessed DATETIME,
     access_count INTEGER DEFAULT 0
   );
+
   CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts
-    USING fts5(content, project, category);
+    USING fts5(content, project, category, content=memories, content_rowid=id);
+
+  -- Triggers to keep FTS5 in sync with the memories table
+  CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+    INSERT INTO memories_fts(rowid, content, project, category)
+    VALUES (new.id, new.content, new.project, new.category);
+  END;
+
+  CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content, project, category)
+    VALUES ('delete', old.id, old.content, old.project, old.category);
+  END;
+
+  CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content, project, category)
+    VALUES ('delete', old.id, old.content, old.project, old.category);
+    INSERT INTO memories_fts(rowid, content, project, category)
+    VALUES (new.id, new.content, new.project, new.category);
+  END;
 `);
 
 export async function remember(
@@ -659,7 +685,7 @@ RULES:
   });
 
   if (input.restart !== false) {
-    execSync("pm2 restart mame-gateway");
+    execSync("pm2 restart all");
   }
 
   // Store the skill as a memory for future reference
@@ -713,7 +739,10 @@ Same engine, different configs. One TH50, multiple agents.
 # ~/.mame/personas/mike.yml
 name: "Mame"
 soul: "SOUL-mike.md"
-model: claude-sonnet-4-6-20250514
+models:
+  default: claude-sonnet-4-6-20250514
+  heartbeat: google/gemini-3.1-flash-lite-preview
+  complex: openrouter/anthropic/claude-opus-4-6
 tools:
   - browser
   - web_search
@@ -736,7 +765,9 @@ discord:
 name: "Siri-chan"
 soul: "SOUL-yuki.md"
 language: "ja"
-model: openrouter/google/gemma-4-31b-it    # $0.14/M tokens — ~$2/month
+models:
+  default: google/gemini-3.1-flash-lite-preview    # $0.25/M input — lightweight and fast
+  heartbeat: google/gemini-3.1-flash-lite-preview
 tools:
   - browser
   - web_search
@@ -784,7 +815,7 @@ module.exports = {
 };
 ```
 
-Two agents, one machine, separate Discord channels, separate memories, separate tool permissions. Yuki's instance runs on Gemma 4 for free. Mike's runs on Claude for power. Both use the same 600 lines of core code.
+Two agents, one machine, separate Discord channels, separate memories, separate tool permissions. Yuki's instance runs on Gemini Flash Lite for pennies. Mike's runs on Claude for power. Both use the same core code.
 
 ---
 
@@ -841,7 +872,7 @@ class Gateway {
     await this.discord.login(await vault.get("global", "DISCORD_BOT_TOKEN"));
   }
 
-  // --- LINE ---
+  // --- LINE (acknowledge-then-push pattern) ---
   private async startLINE() {
     const channelAccessToken = await vault.get("global", "LINE_CHANNEL_ACCESS_TOKEN");
     const channelSecret = await vault.get("global", "LINE_CHANNEL_SECRET");
@@ -861,16 +892,27 @@ class Gateway {
           const userId = event.source.userId;
           const project = config.line?.userMap?.[userId] || undefined;
 
+          // Acknowledge immediately to use the free reply token (~30s expiry)
+          try {
+            await this.line.replyMessage({
+              replyToken: event.replyToken,
+              messages: [{ type: "text", text: "🫘" }],
+            });
+          } catch {
+            // Reply token may already be expired, that's fine
+          }
+
+          // Process the message (may take >30s for complex tasks)
           const reply = await think({
             message: event.message.text,
             channel: "line",
             project,
           });
 
-          // LINE has a 5000 char limit per message
+          // Send the real response via pushMessage (LINE 5000 char limit)
           for (const chunk of splitMessage(reply, 5000)) {
-            await this.line.replyMessage({
-              replyToken: event.replyToken,
+            await this.line.pushMessage({
+              to: userId,
               messages: [{ type: "text", text: chunk }],
             });
           }
@@ -996,60 +1038,73 @@ class Gateway {
 
 ## Heartbeat (The Pulse)
 
+HEARTBEAT.md is the single source of truth. No hardcoded crons. On startup (and on file change), the scheduler reads HEARTBEAT.md and uses the heartbeat model to parse natural language schedules into cron expressions.
+
 ```typescript
 // src/heartbeat.ts
 
 import cron from "node-cron";
+import { watch } from "fs";
 import { think } from "./agent";
-import { gateway } from "./gateway";
+import { chatCompletion } from "./model-router";
 
-function startHeartbeats() {
-  // Quick check every 30 min (Haiku — ~$0.001/check)
-  cron.schedule("*/30 * * * *", async () => {
-    const reply = await think({
-      message: loadHeartbeatChecklist(),
-      channel: "heartbeat",
+class HeartbeatScheduler {
+  private jobs: cron.ScheduledTask[] = [];
+
+  async start() {
+    await this.loadSchedule();
+
+    // Reload when HEARTBEAT.md changes
+    watch(`${MAME_HOME}/HEARTBEAT.md`, async () => {
+      console.log("HEARTBEAT.md changed, reloading schedule...");
+      await this.loadSchedule();
     });
+  }
 
-    // Only notify if something needs attention
-    if (!reply.includes("ALL_CLEAR")) {
-      await gateway.sendToDiscord(undefined, `💓 ${reply}`);
+  private async loadSchedule() {
+    // Clear existing jobs
+    this.jobs.forEach((j) => j.stop());
+    this.jobs = [];
+
+    const raw = fs.readFileSync(`${MAME_HOME}/HEARTBEAT.md`, "utf-8");
+
+    // Use the heartbeat model to parse natural language → cron expressions
+    const entries = await parseSchedule(raw);
+
+    for (const entry of entries) {
+      const job = cron.schedule(entry.cron, async () => {
+        const reply = await think({
+          message: entry.prompt,
+          channel: "heartbeat",
+        });
+
+        // Only notify if something needs attention
+        if (!reply.includes("ALL_CLEAR")) {
+          await gateway.notify(entry.project, `💓 ${reply}`);
+        }
+      }, { timezone: config.timezone || "Asia/Tokyo" });
+
+      this.jobs.push(job);
     }
-  }, { timezone: "Asia/Tokyo" });
-
-  // Morning briefing at 9am JST
-  cron.schedule("0 9 * * *", async () => {
-    const reply = await think({
-      message:
-        "Morning briefing: check email for anything urgent, " +
-        "summarize overnight GitHub activity across all repos, " +
-        "list any scheduled tasks for today. Format as a concise briefing.",
-      channel: "heartbeat",
-    });
-
-    await gateway.sendToDiscord(undefined, `☀️ **Morning Briefing**\n${reply}`);
-  }, { timezone: "Asia/Tokyo" });
-
-  // Weekly report Friday 5pm JST
-  cron.schedule("0 17 * * 5", async () => {
-    const reply = await think({
-      message:
-        "Write a weekly progress report. Check all GitHub repos for " +
-        "merged PRs, closed issues, and open blockers. Recall relevant " +
-        "memories from this week. Write the report and send it to me.",
-      channel: "heartbeat",
-    });
-
-    await gateway.sendToDiscord(undefined, `📊 **Weekly Report**\n${reply}`);
-  }, { timezone: "Asia/Tokyo" });
+  }
 }
 
-function loadHeartbeatChecklist(): string {
-  // Load from HEARTBEAT.md — user-editable
-  return fs.readFileSync(
-    path.join(MAME_HOME, "HEARTBEAT.md"),
-    "utf-8"
+async function parseSchedule(markdown: string) {
+  const response = await chatCompletion(
+    config.models.heartbeat,  // Gemini Flash Lite or similar cheap model
+    "You are a schedule parser.",
+    [{
+      role: "user",
+      content: `Parse this heartbeat schedule into JSON.
+Return an array of: { cron: "cron expression", prompt: "what to check", project: "project or null" }
+
+${markdown}`
+    }],
+    [],
+    2000
   );
+
+  return JSON.parse(extractText(response));
 }
 ```
 
@@ -1128,7 +1183,7 @@ async function maybeExtractSkill(
   if (toolCallCount < 5) return; // Only for complex tasks
 
   const extraction = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001", // Cheap reflection
+    model: config.models.heartbeat || config.models.default, // Use cheap heartbeat model
     max_tokens: 1000,
     messages: [
       {
@@ -1206,11 +1261,11 @@ webhook:
 agentmail:
   pollInterval: 60               # seconds between inbox checks
 
-# Models
+# Models (three backends: no prefix = Anthropic, google/ = Google AI, openrouter/ = OpenRouter)
 models:
   default: claude-sonnet-4-6-20250514
-  heartbeat: claude-haiku-4-5-20251001
-  complex: claude-opus-4-6-20250514
+  heartbeat: google/gemini-3.1-flash-lite-preview
+  complex: openrouter/anthropic/claude-opus-4-6
 ```
 
 ---
@@ -1220,28 +1275,31 @@ models:
 ```
 mame/
 ├── src/
-│   ├── agent.ts          # Agent loop (~50 lines)
-│   ├── prompt.ts         # System prompt assembly (~30 lines)
-│   ├── gateway.ts        # Discord + webhooks + CLI (~100 lines)
-│   ├── heartbeat.ts      # Cron scheduler (~40 lines)
-│   ├── vault.ts          # Encrypted secrets (~60 lines)
-│   ├── memory.ts         # SQLite + FTS5 memory (~50 lines)
-│   ├── improve.ts        # Skill extraction (~30 lines)
-│   ├── config.ts         # Load config + persona (~30 lines)
-│   ├── onboard.ts        # Onboarding interview (~60 lines)
+│   ├── agent.ts          # Agent loop + conversation buffer (~125 lines)
+│   ├── model-router.ts   # Three-backend model routing (~199 lines)
+│   ├── prompt.ts         # System prompt assembly (~28 lines)
+│   ├── gateway.ts        # Discord + LINE + webhooks + TUI (~314 lines)
+│   ├── heartbeat.ts      # HEARTBEAT.md parser + cron scheduler (~161 lines)
+│   ├── vault.ts          # AES-256-GCM encrypted secrets (~90 lines)
+│   ├── memory.ts         # SQLite + FTS5 + triggers (~142 lines)
+│   ├── improve.ts        # Skill extraction (~53 lines)
+│   ├── config.ts         # Load config + persona (~84 lines)
+│   ├── onboard.ts        # Onboarding interview (~179 lines)
+│   ├── index.ts          # Daemon entry point (~58 lines)
+│   ├── cli.ts            # CLI entry point (~281 lines)
 │   └── tools/
-│       ├── index.ts      # Tool registry + executor (~40 lines)
-│       ├── browser.ts    # agent-browser wrapper (~80 lines)
-│       ├── web.ts        # Web search + fetch (~50 lines)
-│       ├── github.ts     # GitHub operations (~60 lines)
-│       ├── email.ts      # AgentMail (~40 lines)
-│       ├── claude-code.ts # Dispatch to Claude Code (~30 lines)
-│       ├── memory.ts     # Memory tool interface (~20 lines)
-│       ├── report.ts     # Write reports (~30 lines)
-│       └── self-modify.ts # Self-modification (~40 lines)
+│       ├── index.ts      # Tool registry + retry + error handling (~126 lines)
+│       ├── browser.ts    # agent-browser wrapper (~112 lines)
+│       ├── web.ts        # Web search + fetch (~106 lines)
+│       ├── github.ts     # GitHub operations (~119 lines)
+│       ├── email.ts      # AgentMail (~87 lines)
+│       ├── claude-code.ts # Dispatch to Claude Code (~73 lines)
+│       ├── memory-tool.ts # Memory tool interface (~64 lines)
+│       ├── report.ts     # Write reports (~61 lines)
+│       └── self-modify.ts # Self-modification (~83 lines)
 ├── package.json
 ├── tsconfig.json
-└── ecosystem.config.js   # pm2 config (multi-persona)
+└── ecosystem.config.cjs  # pm2 config (auto-discovers personas)
 
 ~/.mame/
 ├── SOUL-mike.md           # Mike's agent personality
@@ -1265,7 +1323,7 @@ mame/
 └── reports/               # Generated reports
 ```
 
-**Total application code: ~790 lines of TypeScript.**
+**Total application code: ~2,545 lines of TypeScript.**
 
 One SQLite file for all memory. Portable — copy `memory.db` to migrate anywhere. Backed up with a single `cp` command. Greppable with `sqlite3 memory.db "SELECT * FROM memories WHERE content LIKE '%moneris%'"`. No vector database. No embedding API. No dependencies beyond `better-sqlite3` which you already use.
 
@@ -1279,32 +1337,36 @@ One SQLite file for all memory. Portable — copy `memory.db` to migrate anywher
 {
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@google/generative-ai": "latest",
     "@line/bot-sdk": "^9.0.0",
+    "@octokit/rest": "^20.0.0",
+    "better-sqlite3": "^11.0.0",
     "discord.js": "^14.0.0",
     "express": "^4.18.0",
     "node-cron": "^3.0.0",
-    "@octokit/rest": "^20.0.0",
-    "better-sqlite3": "^11.0.0"
+    "yaml": "^2.4.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.0",
+    "tsx": "^4.0.0",
     "typescript": "^5.4.0",
-    "@types/node": "^20.0.0"
+    "vitest": "^2.0.0"
   }
 }
 ```
 
-Eight npm dependencies. Plus two global CLI tools:
+Nine npm dependencies. Plus two global CLI tools:
 
 ```bash
 npm install -g agent-browser    # Browser automation with persistent profiles
 # Claude Code already installed on TH50
 ```
 
-For Gemma 4 personas (optional):
-```bash
-# Ollama already running on TH50 for OpenClaw
-ollama pull gemma4:31b
-```
+For lightweight personas, use Google AI (Gemini Flash Lite) via the `google/` model prefix.
+No local model setup required for v1.
 
 ---
 
@@ -1474,7 +1536,7 @@ SOUL.md:
    フレンドリーで優しい性格。日本語で会話します..."
 
 config.yml:
-  モデル: gemma-4-31b（無料・高速）
+  モデル: gemini-3.1-flash-lite（高速・低コスト）
   Discord: 3チャンネル設定済み
 
 HEARTBEAT.md:
@@ -1549,7 +1611,7 @@ npx mame init --persona     # Runs onboarding for a new user
 
 ```
 1. Yuki on Discord: "あのダイニングテーブル探して。5万円以下で、無垢材がいい"
-2. Gateway routes to Yuki's persona (Gemma 4, no API cost)
+2. Gateway routes to Yuki's persona (Gemini Flash Lite, minimal cost)
 3. Memory recalls: "Yuki liked the Nitori natural wood style last time"
 4. Agent opens browser with amazon-jp profile (already logged in)
 5. Searches, snapshots results, extracts prices and ratings
@@ -1581,31 +1643,33 @@ npx mame init --persona     # Runs onboarding for a new user
 
 ## Why This Works
 
-- **~790 lines** of application code, zero external AI dependencies beyond the Claude/OpenRouter SDK
-- **8 npm dependencies + 1 global CLI tool**
+- **~2,500 lines** of application code, three model backends (Anthropic, OpenRouter, Google AI)
+- **9 npm dependencies + 1 global CLI tool**
 - **One process per persona** on your existing TH50
 - **No new infrastructure** — uses Claude API, GitHub API, AgentMail API, Discord bot, agent-browser
 - **Claude Code does all the hard work** — you never rebuild file ops, git, testing
-- **Memory is 50 lines of SQLite** — no vector DB, no embedding API, no external dependencies
+- **Memory is SQLite + FTS5 with auto-sync triggers** — no vector DB, no embedding API, no external dependencies
 - **agent-browser handles the web** — persistent logins, no auth headaches
 - **Self-improving** — builds new tools into itself, skills auto-extracted after complex tasks
-- **Multi-persona** — same engine, different configs, your wife gets a free agent on Gemma 4
+- **Multi-persona** — same engine, different configs, lightweight personas run on Gemini Flash Lite
 - **Portable** — memory.db is one file, copy it anywhere. Upgrade to Antakarana when ready
 
 ---
 
-## Build Order
+## Build Order (v0.1.2)
 
-| Weekend | What | Lines |
+| Step | What | Lines |
 |---|---|---|
-| 1 (Sat) | Agent loop + prompt assembly + CLI gateway | ~100 |
-| 1 (Sun) | Discord adapter + webhook receiver | ~100 |
-| 2 (Sat) | Tools: browser, web search, github, email | ~230 |
-| 2 (Sun) | Tools: claude-code, report, self-modify + vault | ~140 |
-| 3 (Sat) | Memory (SQLite + FTS5) + heartbeat scheduler + skill extraction | ~120 |
-| 3 (Sun) | Multi-persona config + testing + pm2 setup | ~50 |
+| 1 | Project scaffold + config + vault | ~174 |
+| 2 | Memory (SQLite + FTS5 + triggers) | ~142 |
+| 3 | Agent loop + model router + error handling | ~352 |
+| 4 | Gateway (Discord + LINE + webhooks + TUI) | ~314 |
+| 5 | Tools (all 8) | ~831 |
+| 6 | Heartbeat scheduler + skill extraction | ~214 |
+| 7 | Onboarding interview | ~179 |
+| 8 | Entry points + CLI + pm2 ecosystem | ~339 |
 
-**3 weekends. 790 lines. An agent that grows itself.**
+**~2,545 lines of TypeScript. An agent that grows itself.**
 
 ---
 
@@ -1617,7 +1681,7 @@ Even if you never deploy this, building it teaches you:
 2. **Tool design patterns** — the schema/execute pattern that's universal across Claude, OpenClaw, Hermes, LangChain
 3. **Memory architecture** — FTS5 now, Antakarana later, why the interface matters more than the implementation
 4. **Browser automation** — persistent profiles, auth flows, the session management problem
-5. **Multi-model routing** — when to use Opus vs Sonnet vs Haiku vs local models
+5. **Multi-model routing** — when to use Opus vs Sonnet vs Flash Lite, routing across Anthropic/OpenRouter/Google backends
 6. **Self-modifying systems** — how agents improve themselves safely
 7. **Multi-persona design** — same engine, different users, different capabilities
 

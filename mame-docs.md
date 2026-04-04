@@ -1,4 +1,4 @@
-# Mame まめ Documentation
+# Mame まめ Documentation — v0.1.2
 
 **A minimal persistent AI agent that lives on your machine, talks to you on Discord or LINE, and gets smarter over time.**
 
@@ -10,7 +10,7 @@
 
 - Node.js 22+
 - A Discord server (for developer use) and/or a LINE account (for personal/Japanese use)
-- An API key for either Anthropic (Claude) or OpenRouter (Gemma 4, Claude, etc.)
+- An API key for Anthropic (Claude), OpenRouter, or Google AI (Gemini)
 
 ### Install
 
@@ -214,7 +214,7 @@ Over time, your agent accumulates tools tailored to your specific needs. Every s
 
 ### Heartbeats
 
-Your agent runs scheduled checks in the background. These are configured in `~/.mame/HEARTBEAT.md` — a plain text file you can edit directly, or ask the agent to update:
+Your agent runs scheduled checks in the background. These are configured in `~/.mame/HEARTBEAT.md` — a plain text file you write in natural language. The agent parses it into cron schedules automatically on startup and whenever the file changes.
 
 ```
 "Add a check for my Vercel deployments every hour"
@@ -222,9 +222,11 @@ Your agent runs scheduled checks in the background. These are configured in `~/.
 "Change the morning briefing to 8am"
 ```
 
-The agent only notifies you when something needs attention. Routine checks that find nothing are silently logged.
+Just edit HEARTBEAT.md with natural language schedules like "Every morning at 9:00" or "Every 30 minutes" — the agent converts them to cron expressions using the heartbeat model. No cron syntax required.
 
-Heartbeats use a cheaper, faster model to keep costs low. If a check finds something that needs real reasoning, it escalates to the full model automatically.
+The agent only notifies you when something needs attention. Routine checks that return ALL_CLEAR are silently logged.
+
+Heartbeats use the `heartbeat` model (typically Gemini 3.1 Flash Lite) to keep costs low. If a check finds something that needs real reasoning, it escalates to the full model automatically.
 
 ---
 
@@ -300,9 +302,9 @@ soul: "SOUL-mike.md"
 language: "en"
 
 models:
-  default: openrouter/anthropic/claude-sonnet-4-6
+  default: claude-sonnet-4-6-20250514
   complex: openrouter/anthropic/claude-opus-4-6
-  heartbeat: openrouter/google/gemma-4-31b-it
+  heartbeat: google/gemini-3.1-flash-lite-preview
 
 tools:
   - browser
@@ -330,8 +332,8 @@ soul: "SOUL-yuki.md"
 language: "ja"
 
 models:
-  default: openrouter/google/gemma-4-31b-it
-  heartbeat: openrouter/google/gemma-4-26b-a4b-it
+  default: google/gemini-3.1-flash-lite-preview
+  heartbeat: google/gemini-3.1-flash-lite-preview
 
 tools:
   - browser
@@ -433,32 +435,36 @@ Secrets are encrypted with AES-256-GCM. The master key is stored in your OS keyc
 
 ### Model configuration
 
-Mame supports any model available through OpenRouter or the Anthropic API directly.
+Mame supports three model backends, selected by prefix in the model string:
+
+| Prefix | Backend | SDK | API Key Env Var |
+|--------|---------|-----|-----------------|
+| _(none)_ | Anthropic direct | `@anthropic-ai/sdk` | `ANTHROPIC_API_KEY` |
+| `openrouter/` | OpenRouter | Anthropic-compatible | `OPENROUTER_API_KEY` |
+| `google/` | Google AI | `@google/generative-ai` | `GOOGLE_API_KEY` |
 
 ```yaml
-# OpenRouter models (recommended — one API key, all models)
-models:
-  default: openrouter/anthropic/claude-sonnet-4-6
-  heartbeat: openrouter/google/gemma-4-31b-it
-
 # Direct Anthropic API
 models:
   default: claude-sonnet-4-6-20250514
 
-# Local models via Ollama
+# Google AI (for lightweight personas and heartbeats)
 models:
-  default: ollama/gemma4:31b
+  default: google/gemini-3.1-flash-lite-preview
+
+# OpenRouter (one API key, many models)
+models:
+  default: openrouter/anthropic/claude-sonnet-4-6
 ```
 
 **Cost guidance:**
 
-| Model | Input/M tokens | Best for |
-|---|---|---|
-| Gemma 4 31B (OpenRouter) | $0.14 | Non-coding personas, heartbeats, simple tasks |
-| Gemma 4 26B MoE (OpenRouter) | $0.13 | Ultra-cheap heartbeats |
-| Claude Haiku 4.5 | $1.00 | Fast heartbeat checks |
-| Claude Sonnet 4.6 | $3.00 | Default for developer workflows |
-| Claude Opus 4.6 | $15.00 | Complex reasoning, architecture decisions |
+| Model | Input/M tokens | Output/M tokens | Best for |
+|---|---|---|---|
+| Gemini 3.1 Flash Lite (Google) | $0.25 | $1.50 | Non-coding personas, heartbeats, simple tasks |
+| Claude Haiku 4.5 | $1.00 | $5.00 | Fast checks requiring strong reasoning |
+| Claude Sonnet 4.6 | $3.00 | $15.00 | Default for developer workflows |
+| Claude Opus 4.6 | $15.00 | $75.00 | Complex reasoning, architecture decisions |
 
 The agent automatically uses the `heartbeat` model for scheduled checks and the `default` model for conversations. Complex tasks can be escalated to `complex` if configured.
 
@@ -503,11 +509,14 @@ npx mame logs
 npx mame logs
 ```
 
+**How LINE responses work:** The agent immediately sends a lightweight acknowledgement (🫘) using the free reply token, then sends the full response via `pushMessage`. This means you'll always see a quick emoji first, followed by the real answer. This is by design — LINE reply tokens expire in ~30 seconds, and complex tasks take longer.
+
 **Common causes:**
 - LINE channel access token or secret incorrect → `npx mame secrets set global LINE_CHANNEL_ACCESS_TOKEN`
 - Webhook URL not configured in LINE Developer Console → set to `https://your-domain:3847/line/webhook`
 - LINE requires HTTPS for webhooks → use a reverse proxy (Caddy auto-provisions SSL) or Tailscale Funnel
-- User ID not mapped in config → add their LINE user ID to `config.yml` under `line.userMap`
+- User ID not mapped in config → add their LINE user ID to the persona's `line.userIds` list
+- Push message quota exceeded → free tier allows 500 push messages/month
 
 ### Heartbeats not firing
 
@@ -589,13 +598,13 @@ npx mame cost report --by-tool
 
 **Common causes of high costs:**
 - Heartbeat interval too frequent → increase interval in HEARTBEAT.md
-- Using Opus/Sonnet for heartbeats → switch heartbeat model to Gemma 4 or Haiku
+- Using Opus/Sonnet for heartbeats → switch heartbeat model to Gemini Flash Lite or Haiku
 - Long conversations with lots of context → the agent loads memories and project context on every turn
 - Browser tool generating many screenshots → each screenshot sent to a vision model costs more
 
 **Cost optimization:**
-- Use Gemma 4 ($0.14/M) for non-coding personas
-- Use Haiku ($1/M) or Gemma 4 for heartbeats
+- Use Gemini 3.1 Flash Lite ($0.25/M input) for non-coding personas
+- Use Gemini Flash Lite or Haiku for heartbeats
 - Reserve Sonnet/Opus for developer workflows that need strong reasoning
 - Keep SOUL.md and project context concise — shorter system prompts = fewer tokens per turn
 
