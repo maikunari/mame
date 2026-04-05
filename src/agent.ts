@@ -9,6 +9,7 @@ import { executeToolCalls, getToolDefinitions } from "./tools/index.js";
 
 export interface Turn {
   message: string;
+  imageUrls?: string[];  // Attached images (Discord, LINE)
   channel: "discord" | "line" | "email" | "webhook" | "cli" | "heartbeat";
   project?: string;
   personaId: string;
@@ -64,9 +65,24 @@ export async function think(turn: Turn): Promise<string> {
 
     // 4. Build messages with conversation history
     const history = getHistory(turn);
+
+    // Build user message content — include images if attached
+    let userContent: string | { type: string; [key: string]: unknown }[];
+    if (turn.imageUrls && turn.imageUrls.length > 0) {
+      userContent = [
+        { type: "text", text: turn.message || "What do you see in this image?" },
+        ...turn.imageUrls.map((url) => ({
+          type: "image_url",
+          url,
+        })),
+      ];
+    } else {
+      userContent = turn.message;
+    }
+
     const messages: ChatMessage[] = [
       ...history,
-      { role: "user" as const, content: turn.message },
+      { role: "user" as const, content: userContent as string | Anthropic.ContentBlock[] },
     ];
 
     // 5. Get tool definitions filtered by persona permissions

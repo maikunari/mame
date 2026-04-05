@@ -67,6 +67,11 @@ export class Gateway {
 
       const project = channelMap[msg.channelId] || undefined;
 
+      // Capture image attachments
+      const imageUrls = msg.attachments
+        .filter((a) => a.contentType?.startsWith("image/"))
+        .map((a) => a.url);
+
       // Show typing indicator while thinking (refreshes every 8s, Discord typing lasts 10s)
       await msg.channel.sendTyping();
       const typingInterval = setInterval(() => {
@@ -74,7 +79,9 @@ export class Gateway {
       }, 8000);
 
       try {
-        const reply = await think(this.buildTurn(msg.content, "discord", project));
+        const turn = this.buildTurn(msg.content, "discord", project);
+        if (imageUrls.length > 0) turn.imageUrls = imageUrls;
+        const reply = await think(turn);
 
         for (const chunk of splitMessage(reply, 2000)) {
           await msg.channel.send(chunk);

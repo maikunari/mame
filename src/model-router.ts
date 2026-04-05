@@ -144,10 +144,41 @@ async function googleCompletion(
     generationConfig: { maxOutputTokens: maxTokens },
   });
 
-  // Convert Anthropic-style messages to Google format
-  const googleMessages = messages.map((m) => ({
-    role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-    parts: [{ text: typeof m.content === "string" ? m.content : JSON.stringify(m.content) }],
+  // Convert Anthropic-style messages to Google format (with multimodal support)
+  const googleMessages = await Promise.all(messages.map(async (m) => {
+    const role = m.role === "assistant" ? ("model" as const) : ("user" as const);
+
+    if (typeof m.content === "string") {
+      return { role, parts: [{ text: m.content }] };
+    }
+
+    // Handle content blocks (may include images)
+    const parts: any[] = [];
+    for (const block of m.content as any[]) {
+      if (block.type === "text") {
+        parts.push({ text: block.text });
+      } else if (block.type === "image_url" && block.url) {
+        // Download image and pass as inline base64
+        try {
+          const response = await fetch(block.url);
+          const buffer = Buffer.from(await response.arrayBuffer());
+          const mimeType = response.headers.get("content-type") || "image/png";
+          parts.push({
+            inlineData: {
+              mimeType,
+              data: buffer.toString("base64"),
+            },
+          });
+        } catch (err) {
+          parts.push({ text: `[Image failed to load: ${block.url}]` });
+        }
+      } else {
+        parts.push({ text: JSON.stringify(block) });
+      }
+    }
+
+    if (parts.length === 0) parts.push({ text: "" });
+    return { role, parts };
   }));
 
   // Google tool format
