@@ -1,0 +1,40 @@
+services:
+  mame:
+    build: .
+    container_name: mame
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MAME_HOME=/home/mame/.mame
+      - MAME_PERSONA=${MAME_PERSONA:-default}
+    volumes:
+      - mame-data:/home/mame/.mame
+    networks:
+      - internal
+    expose:
+      - "3847"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+    depends_on:
+      - mame
+
+volumes:
+  mame-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
+    driver: bridge

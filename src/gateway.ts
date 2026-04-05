@@ -181,8 +181,9 @@ export class Gateway {
     });
 
     const port = this.config.webhook?.port || 3847;
-    this.webhookServer.listen(port, () => {
-      console.log(`[gateway] Webhook server listening on port ${port}`);
+    const host = process.env.MAME_BIND_HOST || "0.0.0.0";
+    this.webhookServer.listen(port, host, () => {
+      console.log(`[gateway] Webhook server listening on ${host}:${port}`);
     });
   }
 
