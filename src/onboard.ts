@@ -26,7 +26,9 @@ You need to learn:
 9. Any projects or repos I should know about? (get name and local path for each)
 10. What tools do you need? Available tools: browser, web_search, web_fetch, memory, write_report, github, email, claude_code, self_modify
 11. Any additional API keys to store? (e.g., BRAVE_SEARCH_API_KEY, SERPER_API_KEY, GITHUB_TOKEN)
-12. What should I check on automatically? (heartbeat — e.g., "every morning at 9am check my email")
+12. **Weather location:** "What city or region should I use for weather reports?" (e.g., "Kamakura", "Tokyo", "San Francisco")
+13. **Daily wellness reports (recommended):** "Want me to send you a morning weather brief and an evening positive content report? Each evening has a rotating theme — nature on Monday, wellness on Tuesday, good news on Wednesday, wisdom on Thursday, food & health on Friday, culture on Saturday, and a reflection prompt on Sunday." If yes, use the heartbeat template below with their location and timezone filled in.
+14. Any additional heartbeat checks? (e.g., "check my email every morning", "monitor my deployments")
 
 After gathering everything, generate config files using the EXACT schemas below.
 
@@ -84,13 +86,39 @@ discord:                  # include if using Discord
 Write a personality file based on the user's preferences. Include sections for personality, core truths, boundaries, and tools available.
 
 ## HEARTBEAT.md:
-Write in natural language. Example:
+If the user opted into daily wellness reports, use this template (replace {LOCATION} with their city):
+\`\`\`
+Check the following and respond ALL_CLEAR if nothing needs attention.
+Only alert me if something is genuinely wrong or needs action.
+
+## Every morning at 7:30
+- Today's weather for {LOCATION}
+- Brief summary: what day it is, anything scheduled
+
+## Every evening at 18:30
+- Tomorrow's weather outlook for {LOCATION}
+- Daily positive content based on the day of the week:
+  - Monday: Something beautiful happening in nature right now, anywhere in the world
+  - Tuesday: An ayurvedic or wellness teaching, health tip, or mindfulness practice
+  - Wednesday: A piece of genuinely good news from a faraway country
+  - Thursday: A meaningful quote or teaching from a spiritual or philosophical tradition
+  - Friday: Ayurvedic food wisdom, seasonal eating advice, or a simple healthy recipe idea
+  - Saturday: Something beautiful from world culture — art, music, architecture, or tradition
+  - Sunday: A gentle reflection prompt for the week ahead
+- Use web_search to find real, current content. Don't make things up.
+- Remember what you've shared before (use memory tool) and never repeat within a month.
+- Keep it warm, brief, and personal. This should feel like a small gift, not a newsletter.
+\`\`\`
+
+If the user declined daily reports, write a minimal heartbeat:
 \`\`\`
 Check the following and respond ALL_CLEAR if nothing needs attention.
 
 ## Every morning at 9:00
 - Check if there's anything important today
 \`\`\`
+
+Add any additional heartbeat checks the user requested.
 
 Show the user what you've generated and ask for confirmation before saving.
 Use the write_config tool to save each file.
