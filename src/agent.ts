@@ -10,7 +10,7 @@ import { executeToolCalls, getToolDefinitions } from "./tools/index.js";
 export interface Turn {
   message: string;
   imageUrls?: string[];  // Attached images (Discord, LINE)
-  channel: "discord" | "line" | "email" | "webhook" | "cli" | "heartbeat";
+  channel: "discord" | "line" | "signal" | "email" | "webhook" | "cli" | "heartbeat";
   project?: string;
   personaId: string;
   soulFile: string;
