@@ -5,6 +5,7 @@ Only alert me if something is genuinely wrong or needs action.
 
 - Today's weather for {LOCATION}
 - Brief summary: what day it is, anything scheduled
+- If today is 大安 (taian), mention it warmly — it's an auspicious day in the Japanese rokuyō calendar. Search to confirm the date. Only mention 大安 days, skip the others.
 
 ## Every evening at 18:30
 

@@ -68,6 +68,7 @@ Check the following and respond ALL_CLEAR if nothing needs attention.
 ## Every morning at 7:30
 - Today's weather for {LOCATION}
 - Brief summary: what day it is
+- If today is 大安 (taian), mention it — an auspicious day in the Japanese rokuyō calendar. Search to confirm. Only mention 大安 days.
 
 ## Every evening at 18:30
 - Tomorrow's weather outlook for {LOCATION}
