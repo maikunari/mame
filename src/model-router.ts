@@ -128,36 +128,44 @@ async function openRouterCompletion(
     if (typeof m.content === "string") {
       oaiMessages.push({ role: m.role, content: m.content });
     } else {
-      // Convert content blocks to OpenAI format
-      const parts: OpenAI.ChatCompletionContentPart[] = [];
-      for (const block of m.content as any[]) {
-        if (block.type === "text") {
-          parts.push({ type: "text", text: block.text });
-        } else if (block.type === "image_url") {
-          parts.push({ type: "image_url", image_url: { url: block.url } });
-        } else if (block.type === "tool_use") {
-          // Assistant tool calls — handle separately
-          oaiMessages.push({
-            role: "assistant",
-            tool_calls: [{
-              id: block.id,
-              type: "function",
-              function: { name: block.name, arguments: JSON.stringify(block.input) },
-            }],
-          } as any);
-          continue;
-        } else if (block.type === "tool_result") {
+      const blocks = m.content as any[];
+
+      // Collect tool_use blocks (assistant) and tool_result blocks (user) separately
+      const toolUseBlocks = blocks.filter((b) => b.type === "tool_use");
+      const toolResultBlocks = blocks.filter((b) => b.type === "tool_result");
+      const textBlocks = blocks.filter((b) => b.type === "text" || b.type === "image_url");
+
+      // If this is an assistant message with tool calls
+      if (m.role === "assistant" && toolUseBlocks.length > 0) {
+        const textContent = textBlocks.map((b) => b.text || "").join("\n").trim() || null;
+        oaiMessages.push({
+          role: "assistant",
+          content: textContent,
+          tool_calls: toolUseBlocks.map((b) => ({
+            id: b.id,
+            type: "function",
+            function: { name: b.name, arguments: JSON.stringify(b.input) },
+          })),
+        } as any);
+      }
+      // If this is a user message with tool results
+      else if (toolResultBlocks.length > 0) {
+        for (const block of toolResultBlocks) {
           oaiMessages.push({
             role: "tool",
             tool_call_id: block.tool_use_id,
             content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
           } as any);
-          continue;
-        } else {
-          parts.push({ type: "text", text: JSON.stringify(block) });
         }
       }
-      if (parts.length > 0) {
+      // Regular content (text, images)
+      else if (textBlocks.length > 0) {
+        const parts: OpenAI.ChatCompletionContentPart[] = textBlocks.map((b) => {
+          if (b.type === "image_url") {
+            return { type: "image_url" as const, image_url: { url: b.url } };
+          }
+          return { type: "text" as const, text: b.text || JSON.stringify(b) };
+        });
         oaiMessages.push({ role: m.role, content: parts } as any);
       }
     }

@@ -100,10 +100,10 @@ export async function think(turn: Turn): Promise<string> {
     }
 
     // 8. Extract text response
-    const reply = response.content
+    const reply = (response.content || [])
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
-      .join("\n");
+      .join("\n") || "I processed your request but had no text response.";
 
     // 9. Update conversation buffer
     appendToHistory(turn, [
