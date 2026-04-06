@@ -23,6 +23,12 @@ export interface LineConfig {
   defaultUserId?: string;
 }
 
+export interface SignalConfig {
+  enabled: boolean;
+  number: string;  // Agent's Signal phone number
+  userMap: Record<string, string | null>;  // Phone number → project or null
+}
+
 export interface WebhookConfig {
   port: number;
 }
@@ -41,6 +47,7 @@ export interface MameConfig {
   projects: Record<string, ProjectConfig>;
   discord?: DiscordConfig;
   line?: LineConfig;
+  signal?: SignalConfig;
   webhook?: WebhookConfig;
   agentmail?: AgentMailConfig;
   models?: ModelsConfig;
@@ -55,6 +62,7 @@ export interface PersonaConfig {
   tools: string[];
   discord?: { channelMap: Record<string, string | null> };
   line?: { userIds: string[] };
+  signal?: { userNumbers: string[] };
 }
 
 export function loadConfig(): MameConfig {

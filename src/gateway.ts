@@ -1,4 +1,4 @@
-// src/gateway.ts — Discord + LINE + webhooks + TUI (~100 lines per spec)
+// src/gateway.ts — Discord + LINE + Signal + webhooks + TUI
 
 import { Client, GatewayIntentBits, type TextChannel } from "discord.js";
 import { messagingApi, middleware } from "@line/bot-sdk";
@@ -6,6 +6,7 @@ import express from "express";
 import readline from "readline";
 import { think, type Turn } from "./agent.js";
 import { type MameConfig, type PersonaConfig, MAME_HOME } from "./config.js";
+import { SignalClient, type SignalMessage } from "./signal.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 
@@ -23,6 +24,7 @@ function splitMessage(text: string, maxLen: number): string[] {
 export class Gateway {
   private discord: Client | null = null;
   private line: messagingApi.MessagingApiClient | null = null;
+  private signal: SignalClient | null = null;
   private webhookServer: express.Application;
   private config: MameConfig;
   private persona: PersonaConfig;
@@ -42,6 +44,9 @@ export class Gateway {
     }
     if (this.config.line?.enabled && this.persona.line) {
       await this.startLINE();
+    }
+    if (this.config.signal?.enabled && this.persona.signal) {
+      await this.startSignal();
     }
     await this.startWebhooks();
     this.startTUI();
@@ -157,6 +162,43 @@ export class Gateway {
     console.log("[gateway] LINE webhook registered at /line/webhook");
   }
 
+  // --- Signal ---
+  private async startSignal(): Promise<void> {
+    const signalNumber = this.config.signal!.number;
+    this.signal = new SignalClient(signalNumber);
+
+    this.signal.on("message", async (msg: SignalMessage) => {
+      // Skip group messages
+      if (msg.groupId) return;
+
+      // Only respond to mapped Signal users
+      const userNumbers = this.persona.signal?.userNumbers || [];
+      const isKnownUser = userNumbers.includes(msg.sender);
+
+      // Check global userMap too
+      const globalUserMap = this.config.signal?.userMap || {};
+      const isMappedUser = msg.sender in globalUserMap;
+
+      if (!isKnownUser && !isMappedUser) {
+        // Unknown user — could trigger onboarding in the future
+        console.log(`[signal] Ignoring message from unknown user: ${msg.sender}`);
+        return;
+      }
+
+      const project = globalUserMap[msg.sender] || undefined;
+
+      const reply = await think(this.buildTurn(msg.text, "signal", project));
+
+      // Split long messages (Signal has a ~6000 char practical limit)
+      for (const chunk of splitMessage(reply, 5000)) {
+        await this.signal!.send(msg.sender, chunk);
+      }
+    });
+
+    await this.signal.start();
+    console.log(`[gateway] Signal connected as ${signalNumber}`);
+  }
+
   // --- Webhooks (New Relic, GitHub, AgentMail) ---
   private async startWebhooks(): Promise<void> {
     this.webhookServer.get("/health", (_req, res) => {
@@ -228,6 +270,7 @@ export class Gateway {
           uptime: process.uptime(),
           discord: this.discord?.isReady() || false,
           line: !!this.line,
+          signal: !!this.signal,
         }, null, 2));
         break;
       case "memory": {
@@ -300,6 +343,18 @@ export class Gateway {
         } catch (err) {
           console.error(`[gateway] Discord notify failed: ${err}`);
         }
+      }
+    }
+
+    // Fallback to Signal
+    if (this.signal && this.config.signal?.userMap) {
+      // Send to the first mapped user
+      const firstUser = Object.keys(this.config.signal.userMap)[0];
+      if (firstUser) {
+        for (const chunk of splitMessage(message, 5000)) {
+          await this.signal.send(firstUser, chunk);
+        }
+        return;
       }
     }
 
