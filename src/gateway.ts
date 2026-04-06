@@ -7,6 +7,7 @@ import readline from "readline";
 import { think, type Turn } from "./agent.js";
 import { type MameConfig, type PersonaConfig, MAME_HOME } from "./config.js";
 import { SignalClient, type SignalMessage } from "./signal.js";
+import { runSignalOnboarding } from "./onboard.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 
@@ -163,33 +164,83 @@ export class Gateway {
   }
 
   // --- Signal ---
+  private onboardingSessions = new Set<string>(); // Track active onboarding conversations
+
   private async startSignal(): Promise<void> {
     const signalNumber = this.config.signal!.number;
     this.signal = new SignalClient(signalNumber);
+
+    // Queue for receiving messages during onboarding (per-user)
+    const messageQueues = new Map<string, ((text: string) => void)[]>();
 
     this.signal.on("message", async (msg: SignalMessage) => {
       // Skip group messages
       if (msg.groupId) return;
 
-      // Only respond to mapped Signal users
+      // If this user is in an active onboarding session, route to the queue
+      if (this.onboardingSessions.has(msg.sender)) {
+        const queue = messageQueues.get(msg.sender);
+        if (queue && queue.length > 0) {
+          const resolve = queue.shift()!;
+          resolve(msg.text);
+        }
+        return;
+      }
+
+      // Check if this is a known/mapped user
       const userNumbers = this.persona.signal?.userNumbers || [];
       const isKnownUser = userNumbers.includes(msg.sender);
-
-      // Check global userMap too
       const globalUserMap = this.config.signal?.userMap || {};
       const isMappedUser = msg.sender in globalUserMap;
 
       if (!isKnownUser && !isMappedUser) {
-        // Unknown user — could trigger onboarding in the future
-        console.log(`[signal] Ignoring message from unknown user: ${msg.sender}`);
+        // Unknown user — start onboarding
+        console.log(`[signal] Unknown user ${msg.sender} — starting onboarding`);
+        this.onboardingSessions.add(msg.sender);
+        messageQueues.set(msg.sender, []);
+
+        const sendFn = async (text: string) => {
+          for (const chunk of splitMessage(text, 5000)) {
+            await this.signal!.send(msg.sender, chunk);
+          }
+        };
+
+        const receiveFn = (): Promise<string> => {
+          return new Promise((resolve) => {
+            const queue = messageQueues.get(msg.sender)!;
+            queue.push(resolve);
+          });
+        };
+
+        try {
+          const model = process.env.MAME_ONBOARD_MODEL || "google/gemini-3.1-flash-lite-preview";
+          await runSignalOnboarding(
+            model,
+            msg.sender,
+            msg.text,
+            signalNumber,
+            sendFn,
+            receiveFn,
+          );
+          console.log(`[signal] Onboarding complete for ${msg.sender}`);
+
+          // Notify admin to restart for new persona to take effect
+          await this.notify(undefined, `🫘 New persona onboarded via Signal: ${msg.sender}. Restart to activate: pm2 restart all`);
+        } catch (err) {
+          console.error(`[signal] Onboarding failed for ${msg.sender}: ${err}`);
+          await this.signal!.send(msg.sender, "Sorry, something went wrong during setup. Please try again.");
+        } finally {
+          this.onboardingSessions.delete(msg.sender);
+          messageQueues.delete(msg.sender);
+        }
         return;
       }
 
+      // Known user — normal conversation
       const project = globalUserMap[msg.sender] || undefined;
 
       const reply = await think(this.buildTurn(msg.text, "signal", project));
 
-      // Split long messages (Signal has a ~6000 char practical limit)
       for (const chunk of splitMessage(reply, 5000)) {
         await this.signal!.send(msg.sender, chunk);
       }

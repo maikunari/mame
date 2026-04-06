@@ -111,6 +111,21 @@ export class SignalClient extends EventEmitter {
     }
   }
 
+  async updateProfile(name: string, avatarPath?: string): Promise<void> {
+    try {
+      const args = ["-u", this.number, "updateProfile", "--given-name", name];
+      if (avatarPath) args.push("--avatar", avatarPath);
+      execFileSync("signal-cli", args, { timeout: 15000 });
+      console.log(`[signal] Profile updated: ${name}`);
+    } catch (error) {
+      console.error(`[signal] Profile update failed: ${error}`);
+    }
+  }
+
+  getNumber(): string {
+    return this.number;
+  }
+
   stop(): void {
     if (this.process) {
       this.process.kill();
