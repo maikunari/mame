@@ -175,12 +175,25 @@ async function openRouterCompletion(
       }))
     : undefined;
 
-  const response = await client.chat.completions.create({
-    model: modelId,
-    max_tokens: maxTokens,
-    messages: oaiMessages,
-    tools: oaiTools,
-  });
+  let response;
+  try {
+    response = await client.chat.completions.create({
+      model: modelId,
+      max_tokens: maxTokens,
+      messages: oaiMessages,
+      tools: oaiTools,
+    });
+  } catch (error: any) {
+    // Extract a clean error message — never dump raw HTML
+    let errMsg = "OpenRouter API error";
+    if (error?.message) {
+      // Strip HTML if present
+      errMsg = error.message.replace(/<[^>]+>/g, "").slice(0, 200);
+    }
+    if (error?.status) errMsg = `OpenRouter ${error.status}: ${errMsg}`;
+    console.error(`[model-router] OpenRouter error: ${errMsg}`);
+    return { content: [{ type: "text", text: errMsg, citations: null } as Anthropic.TextBlock], stop_reason: "end_turn" };
+  }
 
   const choice = response.choices[0];
   if (!choice) {
