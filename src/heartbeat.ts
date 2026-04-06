@@ -86,10 +86,16 @@ export class HeartbeatScheduler {
 
         const reply = await think(turn);
 
-        // Only notify if something needs attention
-        if (!reply.includes("ALL_CLEAR")) {
-          await this.notify(entry.project || undefined, `💓 ${reply}`);
+        // Only suppress on EXACT "ALL_CLEAR" reply (trimmed). If the model
+        // includes ALL_CLEAR within a larger response (e.g. a daily brief
+        // that mentions everything is fine), we still deliver it.
+        const trimmed = reply.trim();
+        if (trimmed === "ALL_CLEAR" || trimmed === "ALL_CLEAR.") {
+          console.log(`[heartbeat] Suppressed (ALL_CLEAR): ${entry.prompt.slice(0, 50)}...`);
+          return;
         }
+
+        await this.notify(entry.project || undefined, `💓 ${reply}`);
       }, { timezone });
 
       this.jobs.push(job);

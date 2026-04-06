@@ -63,15 +63,15 @@ Write a personality file in their preferred language. Include:
 ## HEARTBEAT-{name}.md:
 If they opted into daily wellness reports, create a persona-specific heartbeat file (replace {LOCATION} with their city):
 \`\`\`
-Check the following and respond ALL_CLEAR if nothing needs attention.
+There are two kinds of scheduled tasks below:
+**Daily reports** — always deliver the full report. Never reply with just "ALL_CLEAR".
+**Monitoring checks** — only reply if something needs attention. Reply exactly "ALL_CLEAR" if everything is fine.
 
-## Every morning at 7:30
+## Every morning at 7:30 — DAILY REPORT (always send)
+Compose a warm morning brief that includes:
 - Today's weather for {LOCATION}
-- Brief summary: what day it is
-- If today is 大安 (taian), mention it — an auspicious day in the Japanese rokuyō calendar. Search to confirm. Only mention 大安 days.
-
-## Every evening at 18:30
-- Tomorrow's weather outlook for {LOCATION}
+- The day of the week and date
+- If today is 大安 (taian), mention it warmly — an auspicious day in the Japanese rokuyō calendar. Use web_search to confirm. Only mention 大安 days.
 - Daily positive content based on the day of the week:
   - Monday: Something beautiful happening in nature right now
   - Tuesday: An ayurvedic or wellness teaching or mindfulness practice
@@ -80,9 +80,14 @@ Check the following and respond ALL_CLEAR if nothing needs attention.
   - Friday: Ayurvedic food wisdom or a simple healthy recipe idea
   - Saturday: Something beautiful from world culture
   - Sunday: A gentle reflection prompt for the week ahead
-- Use web_search to find real, current content.
+- Use web_search to find real, current content. Don't make things up.
 - Remember what you've shared before (use memory tool) and never repeat within a month.
-- Keep it warm, brief, and personal.
+- Keep it warm, brief, and personal. Always send this — never suppress with ALL_CLEAR.
+
+## Every evening at 18:30 — DAILY REPORT (always send)
+- Tomorrow's weather outlook for {LOCATION}
+- Anything noteworthy coming up
+Always send this — never suppress with ALL_CLEAR.
 \`\`\`
 
 ## config.yml update:
