@@ -210,11 +210,48 @@ async function main(): Promise<void> {
           console.log("No HEARTBEAT.md found.");
         }
       } else if (sub === "run") {
-        const persona = args.includes("--persona") ? args[args.indexOf("--persona") + 1] : "default";
+        // Auto-discover persona if not specified
+        let persona: string;
+        if (args.includes("--persona")) {
+          persona = args[args.indexOf("--persona") + 1];
+        } else {
+          const personasDir = path.join(MAME_HOME, "personas");
+          if (fs.existsSync(personasDir)) {
+            const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
+            if (files.length === 0) {
+              console.log("No personas found in ~/.mame/personas/");
+              break;
+            }
+            if (files.length > 1) {
+              console.log(`Multiple personas found: ${files.map((f) => f.replace(".yml", "")).join(", ")}`);
+              console.log(`Specify one with --persona <name>`);
+              break;
+            }
+            persona = files[0].replace(".yml", "");
+            console.log(`Using persona: ${persona}`);
+          } else {
+            console.log("No ~/.mame/personas/ directory found");
+            break;
+          }
+        }
+
         const { loadPersona } = await import("./config.js");
         const config = loadConfig();
         const personaConfig = loadPersona(persona);
-        const scheduler = new HeartbeatScheduler(config, personaConfig, async (_p, msg) => console.log(msg));
+
+        // Load vault secrets into env so tools can use them
+        const vault = new Vault();
+        const globalSecrets = await vault.getAll("global");
+        for (const [key, value] of Object.entries(globalSecrets)) {
+          if (!process.env[key]) process.env[key] = value;
+        }
+
+        // Use console for notify so we see the output locally
+        const scheduler = new HeartbeatScheduler(config, personaConfig, async (_p, msg) => {
+          console.log("\n" + "=".repeat(60));
+          console.log(msg);
+          console.log("=".repeat(60) + "\n");
+        });
         const result = await scheduler.runNow();
         console.log(result);
       } else {

@@ -147,21 +147,48 @@ ${markdown}`,
     }
   }
 
-  async runNow(): Promise<string> {
+  // List the parsed schedule entries (for CLI inspection)
+  async listEntries(): Promise<HeartbeatEntry[]> {
     const heartbeatPath = path.join(MAME_HOME, "HEARTBEAT.md");
-    if (!fs.existsSync(heartbeatPath)) return "No HEARTBEAT.md found";
-
+    if (!fs.existsSync(heartbeatPath)) return [];
     const raw = fs.readFileSync(heartbeatPath, "utf-8");
+    return this.parseSchedule(raw);
+  }
 
-    const turn: Turn = {
-      message: raw,
-      channel: "heartbeat",
-      personaId: this.persona.name,
-      soulFile: this.persona.soul,
-      model: this.persona.models.heartbeat || this.persona.models.default,
-      tools: this.persona.tools,
-    };
+  // Run all scheduled entries immediately (for manual testing)
+  async runNow(): Promise<string> {
+    const entries = await this.listEntries();
+    if (entries.length === 0) {
+      return "No HEARTBEAT.md entries to run.";
+    }
 
-    return think(turn);
+    const results: string[] = [];
+    for (const entry of entries) {
+      console.log(`[heartbeat] Running: ${entry.prompt.slice(0, 60)}...`);
+
+      const turn: Turn = {
+        message: entry.prompt,
+        channel: "heartbeat",
+        project: entry.project || undefined,
+        personaId: this.persona.name,
+        soulFile: this.persona.soul,
+        model: this.persona.models.heartbeat || this.persona.models.default,
+        tools: this.persona.tools,
+      };
+
+      const reply = await think(turn);
+      const trimmed = reply.trim();
+
+      if (trimmed === "ALL_CLEAR" || trimmed === "ALL_CLEAR.") {
+        results.push(`✓ [${entry.cron}] ALL_CLEAR (suppressed)`);
+        continue;
+      }
+
+      // Deliver via notify callback
+      await this.notify(entry.project || undefined, `💓 ${reply}`);
+      results.push(`✓ [${entry.cron}] Delivered`);
+    }
+
+    return results.join("\n");
   }
 }
