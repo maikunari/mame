@@ -39,6 +39,7 @@ tools:
   - web_fetch
   - memory
   - write_report
+  - self_config
 
 discord:
   channelMap:

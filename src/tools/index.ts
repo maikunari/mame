@@ -34,6 +34,7 @@ export async function loadTools(): Promise<void> {
   await import("./memory-tool.js");
   await import("./report.js");
   await import("./self-modify.js");
+  await import("./self-config.js");
 }
 
 export function getToolDefinitions(enabledTools: string[]): ToolDefinition[] {
