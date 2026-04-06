@@ -29,6 +29,93 @@ async function main(): Promise<void> {
       break;
     }
 
+    case "onboard-signal": {
+      const signalNumber = args[1];
+      if (!signalNumber || !signalNumber.startsWith("+")) {
+        console.log("Usage: mame onboard-signal +PHONE_NUMBER");
+        console.log("  The phone number must be registered with signal-cli first.");
+        console.log("  Run: bash deploy/install-signal-cli.sh");
+        break;
+      }
+
+      console.log(`\n🫘 Waiting for a Signal message on ${signalNumber}...`);
+      console.log("  Tell the new user to message this number on Signal.");
+      console.log("  Press Ctrl+C to cancel.\n");
+
+      const { SignalClient } = await import("./signal.js");
+      const { runSignalOnboarding } = await import("./onboard.js");
+
+      const signal = new SignalClient(signalNumber);
+      const model = process.env.MAME_ONBOARD_MODEL || "google/gemini-3.1-flash-lite-preview";
+
+      // Wait for first message from any unknown number
+      const messageQueues = new Map<string, ((text: string) => void)[]>();
+
+      signal.on("message", async (msg: any) => {
+        if (msg.groupId) return;
+
+        // If already onboarding this user, route to queue
+        if (messageQueues.has(msg.sender)) {
+          const queue = messageQueues.get(msg.sender)!;
+          if (queue.length > 0) {
+            const resolve = queue.shift()!;
+            resolve(msg.text);
+          }
+          return;
+        }
+
+        console.log(`\n📱 New message from ${msg.sender}: "${msg.text}"`);
+        console.log("  Starting onboarding...\n");
+
+        messageQueues.set(msg.sender, []);
+
+        const sendFn = async (text: string) => {
+          // Split long messages
+          const chunks = text.length <= 5000 ? [text] : [];
+          let remaining = text;
+          while (remaining.length > 0) {
+            if (chunks.length === 0 || remaining.length > 0) {
+              chunks.push(remaining.slice(0, 5000));
+              remaining = remaining.slice(5000);
+            }
+          }
+          for (const chunk of chunks) {
+            await signal.send(msg.sender, chunk);
+          }
+          // Also log to console so admin can see the conversation
+          console.log(`  🫘 → ${text.slice(0, 100)}${text.length > 100 ? "..." : ""}`);
+        };
+
+        const receiveFn = (): Promise<string> => {
+          return new Promise((resolve) => {
+            const queue = messageQueues.get(msg.sender)!;
+            queue.push((text: string) => {
+              console.log(`  📱 ← ${text.slice(0, 100)}${text.length > 100 ? "..." : ""}`);
+              resolve(text);
+            });
+          });
+        };
+
+        try {
+          await runSignalOnboarding(model, msg.sender, msg.text, signalNumber, sendFn, receiveFn);
+          console.log("\n✅ Onboarding complete!");
+          console.log("  Now restart Mame to activate the new persona:");
+          console.log("  pm2 restart all\n");
+        } catch (err) {
+          console.error(`\n❌ Onboarding failed: ${err}`);
+          await signal.send(msg.sender, "Sorry, something went wrong during setup. Please try again.");
+        }
+
+        messageQueues.delete(msg.sender);
+        // Keep listening for more users, or Ctrl+C to exit
+      });
+
+      await signal.start();
+      // Keep process alive
+      await new Promise(() => {});
+      break;
+    }
+
     case "start": {
       const ecosystemPath = path.join(process.cwd(), "ecosystem.config.cjs");
       if (!fs.existsSync(ecosystemPath)) {
@@ -244,7 +331,8 @@ async function main(): Promise<void> {
 
 Usage:
   mame init                      First-time setup with onboarding interview
-  mame init --persona            Add a new persona
+  mame init --persona            Add a new persona (CLI interview)
+  mame onboard-signal +NUMBER    Wait for Signal message and onboard new user
   mame start                     Start all personas
   mame stop                      Stop all personas
   mame restart                   Restart all personas
