@@ -1,6 +1,7 @@
 // src/model-router.ts — Prefix-based routing to Anthropic/OpenRouter/Google
 
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export type ModelBackend = "anthropic" | "openrouter" | "google";
@@ -30,11 +31,12 @@ function getAnthropicClient(): Anthropic {
   return anthropicClient;
 }
 
-// OpenRouter client — uses Anthropic SDK with custom base URL
-let openRouterClient: Anthropic | null = null;
-function getOpenRouterClient(): Anthropic {
+// OpenRouter client — uses OpenAI SDK with OpenRouter base URL
+// Supports all models on OpenRouter (Qwen, Llama, Claude, Gemma, etc.)
+let openRouterClient: OpenAI | null = null;
+function getOpenRouterClient(): OpenAI {
   if (!openRouterClient) {
-    openRouterClient = new Anthropic({
+    openRouterClient = new OpenAI({
       apiKey: process.env.OPENROUTER_API_KEY || "",
       baseURL: "https://openrouter.ai/api/v1",
     });
@@ -115,19 +117,102 @@ async function openRouterCompletion(
   tools: ToolDefinition[],
   maxTokens: number
 ): Promise<ModelResponse> {
-  // OpenRouter is Anthropic-compatible API
   const client = getOpenRouterClient();
-  const response = await client.messages.create({
+
+  // Convert messages to OpenAI format
+  const oaiMessages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: system },
+  ];
+
+  for (const m of messages) {
+    if (typeof m.content === "string") {
+      oaiMessages.push({ role: m.role, content: m.content });
+    } else {
+      // Convert content blocks to OpenAI format
+      const parts: OpenAI.ChatCompletionContentPart[] = [];
+      for (const block of m.content as any[]) {
+        if (block.type === "text") {
+          parts.push({ type: "text", text: block.text });
+        } else if (block.type === "image_url") {
+          parts.push({ type: "image_url", image_url: { url: block.url } });
+        } else if (block.type === "tool_use") {
+          // Assistant tool calls — handle separately
+          oaiMessages.push({
+            role: "assistant",
+            tool_calls: [{
+              id: block.id,
+              type: "function",
+              function: { name: block.name, arguments: JSON.stringify(block.input) },
+            }],
+          } as any);
+          continue;
+        } else if (block.type === "tool_result") {
+          oaiMessages.push({
+            role: "tool",
+            tool_call_id: block.tool_use_id,
+            content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
+          } as any);
+          continue;
+        } else {
+          parts.push({ type: "text", text: JSON.stringify(block) });
+        }
+      }
+      if (parts.length > 0) {
+        oaiMessages.push({ role: m.role, content: parts } as any);
+      }
+    }
+  }
+
+  // Convert tools to OpenAI format
+  const oaiTools = tools.length > 0
+    ? tools.map((t) => ({
+        type: "function" as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.input_schema,
+        },
+      }))
+    : undefined;
+
+  const response = await client.chat.completions.create({
     model: modelId,
     max_tokens: maxTokens,
-    system,
-    messages: messages as Anthropic.MessageParam[],
-    tools: tools.length > 0 ? (tools as Anthropic.Tool[]) : undefined,
+    messages: oaiMessages,
+    tools: oaiTools,
   });
-  return {
-    content: response.content,
-    stop_reason: response.stop_reason,
-  };
+
+  const choice = response.choices[0];
+  if (!choice) {
+    return { content: [{ type: "text", text: "No response from OpenRouter model", citations: null } as Anthropic.TextBlock], stop_reason: "end_turn" };
+  }
+
+  // Convert OpenAI response back to Anthropic format
+  const content: Anthropic.ContentBlock[] = [];
+  let stopReason: string | null = "end_turn";
+
+  if (choice.message.content) {
+    content.push({ type: "text", text: choice.message.content, citations: null } as Anthropic.TextBlock);
+  }
+
+  if (choice.message.tool_calls) {
+    for (const tc of choice.message.tool_calls) {
+      const fn = (tc as any).function;
+      content.push({
+        type: "tool_use",
+        id: tc.id,
+        name: fn.name,
+        input: JSON.parse(fn.arguments || "{}"),
+      } as Anthropic.ToolUseBlock);
+    }
+    stopReason = "tool_use";
+  }
+
+  if (content.length === 0) {
+    content.push({ type: "text", text: "", citations: null } as Anthropic.TextBlock);
+  }
+
+  return { content, stop_reason: stopReason };
 }
 
 async function googleCompletion(
