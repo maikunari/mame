@@ -50,7 +50,15 @@ RULES:
         ["-p", prompt],
         {
           cwd: MAME_PROJECT_PATH,
-          env: process.env,
+          env: {
+            // Only pass safe env vars — no API keys, tokens, or secrets
+            HOME: process.env.HOME,
+            PATH: process.env.PATH,
+            NODE_ENV: process.env.NODE_ENV,
+            SHELL: process.env.SHELL,
+            LANG: process.env.LANG,
+            TERM: process.env.TERM,
+          },
           timeout: 600000, // 10 min timeout
         },
         async (error, stdout, stderr) => {

@@ -62,6 +62,11 @@ registerTool({
       return { error: "Invalid path — must be within ~/.mame/" };
     }
 
+    // Block all access to vault directory
+    if (relativePath.includes(".vault") || relativePath.endsWith(".enc")) {
+      return { error: "Cannot access vault directory. Use the secrets CLI: mame secrets list" };
+    }
+
     switch (action) {
       case "list": {
         if (!fs.existsSync(fullPath)) {

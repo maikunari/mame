@@ -35,7 +35,7 @@ export class Gateway {
     this.persona = persona;
     this.vault = vault;
     this.webhookServer = express();
-    this.webhookServer.use(express.json());
+    this.webhookServer.use(express.json({ limit: "100kb" })); // Limit request body size
   }
 
   async start(): Promise<void> {

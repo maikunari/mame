@@ -8,7 +8,11 @@ import { MAME_HOME } from "./config.js";
 // Ensure ~/.mame/ exists before opening the database
 fs.mkdirSync(MAME_HOME, { recursive: true });
 
-const db: DatabaseType = new Database(path.join(MAME_HOME, "memory.db"));
+const dbPath = path.join(MAME_HOME, "memory.db");
+const db: DatabaseType = new Database(dbPath);
+
+// Set file permissions to owner-only (0600)
+try { fs.chmodSync(dbPath, 0o600); } catch { /* may fail on some systems */ }
 
 // Enable WAL mode for better concurrent read performance
 db.pragma("journal_mode = WAL");

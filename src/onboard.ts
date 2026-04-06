@@ -209,9 +209,13 @@ export async function runOnboarding(model: string): Promise<void> {
     const crypto = await import("crypto");
     const key = crypto.randomBytes(32).toString("hex");
     process.env.MAME_MASTER_KEY = key;
-    console.log(`\nYour master key (save this somewhere safe):\n  ${key}\n`);
-    console.log("Set it permanently with: export MAME_MASTER_KEY=" + key);
-    console.log("");
+
+    // Write key to a protected file instead of printing to console
+    const keyFile = path.join(MAME_HOME, ".master-key");
+    fs.writeFileSync(keyFile, key, { mode: 0o600 });
+    console.log(`\n  Master key saved to ${keyFile} (permissions: owner-only)`);
+    console.log(`  Back it up, then add to your shell profile:`);
+    console.log(`    echo 'export MAME_MASTER_KEY=$(cat ${keyFile})' >> ~/.bashrc\n`);
     vault = new Vault();
   }
 
