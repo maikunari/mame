@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   switch (command) {
     case "init": {
       const isPersona = args.includes("--persona");
-      const model = process.env.MAME_ONBOARD_MODEL || "google/gemini-3.1-flash-lite-preview";
+      const model = process.env.MAME_ONBOARD_MODEL || "openrouter/qwen/qwen3.5-plus-02-15";
       if (isPersona) {
         console.log("Adding a new persona...\n");
       }
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
       const { runSignalOnboarding } = await import("./onboard.js");
 
       const signal = new SignalClient(signalNumber);
-      const model = process.env.MAME_ONBOARD_MODEL || "google/gemini-3.1-flash-lite-preview";
+      const model = process.env.MAME_ONBOARD_MODEL || "openrouter/qwen/qwen3.5-plus-02-15";
 
       // Wait for first message from any unknown number
       const messageQueues = new Map<string, ((text: string) => void)[]>();

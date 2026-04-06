@@ -35,8 +35,8 @@ soul: "SOUL-AgentName.md"
 language: "ja"            # or "en", match their preference
 
 models:
-  default: google/gemini-3.1-flash-lite-preview
-  heartbeat: google/gemini-3.1-flash-lite-preview
+  default: openrouter/qwen/qwen3.5-plus-02-15
+  heartbeat: openrouter/qwen/qwen3.5-plus-02-15
 
 tools:
   - browser
@@ -149,8 +149,8 @@ soul: "SOUL-AgentName.md"
 language: "en"
 
 models:
-  default: google/gemini-3.1-flash-lite-preview
-  heartbeat: google/gemini-3.1-flash-lite-preview
+  default: openrouter/qwen/qwen3.5-plus-02-15
+  heartbeat: openrouter/qwen/qwen3.5-plus-02-15
 
 tools:
   - browser
