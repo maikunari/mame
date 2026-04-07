@@ -178,13 +178,16 @@ async function main(): Promise<void> {
       const config = loadConfig();
       const personaConfig = loadPersona(persona);
 
-      // Load vault secrets into env so the model router and tools see API keys.
-      // Without this, a fresh shell won't have OPENROUTER_API_KEY / GEMINI_API_KEY
-      // / ANTHROPIC_API_KEY available to the CLI chat subprocess.
-      const chatVault = new Vault();
-      const globalSecrets = await chatVault.getAll("global");
-      for (const [key, value] of Object.entries(globalSecrets)) {
-        if (!process.env[key]) process.env[key] = value;
+      // Load vault secrets into env so the model router and tools see API
+      // keys. Skipped if MAME_MASTER_KEY isn't set — that means secrets are
+      // already coming from the systemd-creds loader (or were exported in
+      // the calling shell directly), so the vault load isn't needed.
+      if (Vault.isAvailable()) {
+        const chatVault = new Vault();
+        const globalSecrets = await chatVault.getAll("global");
+        for (const [key, value] of Object.entries(globalSecrets)) {
+          if (!process.env[key]) process.env[key] = value;
+        }
       }
 
       const rl = readline.createInterface({
@@ -257,11 +260,15 @@ async function main(): Promise<void> {
         const config = loadConfig();
         const personaConfig = loadPersona(persona);
 
-        // Load vault secrets into env so tools can use them
-        const vault = new Vault();
-        const globalSecrets = await vault.getAll("global");
-        for (const [key, value] of Object.entries(globalSecrets)) {
-          if (!process.env[key]) process.env[key] = value;
+        // Load vault secrets into env so tools can use them. Skipped when
+        // MAME_MASTER_KEY isn't set — secrets are then coming from
+        // systemd-creds (post-cutover) or the shell environment.
+        if (Vault.isAvailable()) {
+          const vault = new Vault();
+          const globalSecrets = await vault.getAll("global");
+          for (const [key, value] of Object.entries(globalSecrets)) {
+            if (!process.env[key]) process.env[key] = value;
+          }
         }
 
         // Use console for notify so we see the output locally
