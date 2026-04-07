@@ -101,9 +101,17 @@ export async function think(turn: Turn): Promise<string> {
     const tools = getAgentTools(turn.tools, turn);
 
     // 6. Construct a fresh Agent with the conversation history seeded from
-    //    our buffer. thinkingLevel: "off" matches the previous behavior —
-    //    Evening 4+ can expose this per-persona if wanted.
-    const history = getHistory(turn);
+    //    our buffer. Heartbeat firings bypass the buffer entirely — they're
+    //    independent scheduled tasks that should never share message history,
+    //    and accumulating buffer state across firings caused intermittent
+    //    Gemini 400 errors ("function response turn comes immediately after
+    //    a function call turn") because unrelated tool_call/tool_result
+    //    sequences ended up adjacent in the transcript.
+    //
+    //    thinkingLevel: "off" matches the previous behavior — Evening 4+ can
+    //    expose this per-persona if wanted.
+    const useBuffer = turn.channel !== "heartbeat";
+    const history = useBuffer ? getHistory(turn) : [];
     const agent = new Agent({
       initialState: {
         systemPrompt,
@@ -126,8 +134,11 @@ export async function think(turn: Turn): Promise<string> {
     //    next turn internally. Errors are swallowed into the transcript.
     await agent.prompt(turn.message, images);
 
-    // 9. Persist the updated transcript back to our buffer.
-    setHistory(turn, agent.state.messages as Message[]);
+    // 9. Persist the updated transcript back to our buffer (skipped for
+    //    heartbeat channel — see step 6 comment).
+    if (useBuffer) {
+      setHistory(turn, agent.state.messages as Message[]);
+    }
 
     // 10. Extract the final assistant text reply.
     if (agent.state.errorMessage) {
