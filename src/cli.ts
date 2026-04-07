@@ -8,6 +8,7 @@ import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
 import { loadTools } from "./tools/index.js";
+import { loadSystemdCredentials } from "./init-credentials.js";
 import readline from "readline";
 import path from "path";
 import fs from "fs";
@@ -16,6 +17,14 @@ const args = process.argv.slice(2);
 const command = args[0];
 
 async function main(): Promise<void> {
+  // Load systemd credentials FIRST so they take precedence over the vault.
+  // No-op when $CREDENTIALS_DIRECTORY isn't set (local dev, pm2 deploys),
+  // so the existing vault path keeps working unchanged.
+  const credResult = loadSystemdCredentials();
+  if (credResult.source === "systemd" && credResult.loaded.length > 0) {
+    console.log(`[init] Loaded ${credResult.loaded.length} credential(s) from systemd: ${credResult.loaded.join(", ")}`);
+  }
+
   // Load all tool registrations
   await loadTools();
   switch (command) {
