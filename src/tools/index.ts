@@ -1,6 +1,18 @@
 // src/tools/index.ts — Tool registry + executor
+//
+// This file maintains two parallel surfaces during the pi-ai migration:
+//
+// 1. The legacy surface (ToolDefinition, executeToolCalls, withRetry) — still
+//    used by onboard.ts and heartbeat.ts until Evening 3.
+// 2. The pi-agent-core surface (getAgentTools) — used by the new agent.ts
+//    starting in Evening 2. Returns AgentTool[] ready for Agent instances.
+//
+// Evening 3 will delete the legacy surface when the last callers migrate.
 
 import type Anthropic from "@anthropic-ai/sdk";
+import { Type, type TSchema } from "@mariozechner/pi-ai";
+import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import pRetry, { AbortError } from "p-retry";
 import type { Turn } from "../agent.js";
 import type { ToolDefinition } from "../model-router.js";
 
@@ -37,13 +49,11 @@ export async function loadTools(): Promise<void> {
   await import("./self-config.js");
 }
 
-export function getToolDefinitions(enabledTools: string[]): ToolDefinition[] {
-  return Array.from(tools.values())
-    .filter((t) => enabledTools.includes(t.definition.name))
-    .map((t) => t.definition);
-}
+// ---------------------------------------------------------------------------
+// Transient error detection — shared between the legacy withRetry() path and
+// the new p-retry-based path in getAgentTools().
+// ---------------------------------------------------------------------------
 
-// Transient error detection
 function isTransientError(error: unknown): boolean {
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
@@ -51,7 +61,6 @@ function isTransientError(error: unknown): boolean {
       return true;
     }
   }
-  // Check for HTTP status codes
   if (typeof error === "object" && error !== null && "status" in error) {
     const status = (error as { status: number }).status;
     return status === 429 || status === 503 || status === 502 || status === 504;
@@ -59,7 +68,18 @@ function isTransientError(error: unknown): boolean {
   return false;
 }
 
-// Retry with exponential backoff for transient errors
+// ---------------------------------------------------------------------------
+// Legacy surface: ToolDefinition[] + executeToolCalls() + withRetry()
+// Used by onboard.ts and heartbeat.ts via the chatCompletion() shim. Deleted
+// in Evening 3 when those callers move to pi-agent-core.
+// ---------------------------------------------------------------------------
+
+export function getToolDefinitions(enabledTools: string[]): ToolDefinition[] {
+  return Array.from(tools.values())
+    .filter((t) => enabledTools.includes(t.definition.name))
+    .map((t) => t.definition);
+}
+
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 2,
@@ -102,12 +122,6 @@ export async function executeToolCalls(
       continue;
     }
 
-    // TODO: For production, enforce a hard approval gate here when
-    // handler.requiresApproval is true. Currently the SOUL.md instructs
-    // the agent to ask for confirmation, but there's no programmatic block.
-    // The gate should pause execution and request user confirmation via
-    // the gateway before proceeding.
-
     try {
       const result = await withRetry(
         () => handler.execute(block.input as Record<string, unknown>, { turn })
@@ -118,7 +132,6 @@ export async function executeToolCalls(
         content: JSON.stringify(result),
       });
     } catch (error) {
-      // Non-transient error or retries exhausted — return to agent as tool result
       const errMsg = error instanceof Error ? error.message : String(error);
       const retriesExhausted = isTransientError(error);
       console.error(`[tools] ${block.name} failed: ${errMsg}`);
@@ -135,4 +148,78 @@ export async function executeToolCalls(
   }
 
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// pi-agent-core surface: getAgentTools() returns AgentTool[] ready to be
+// handed to a fresh Agent instance. Each call closes over the current Turn
+// so tool handlers see the right project/persona/channel context.
+//
+// Retry: p-retry handles transient errors (timeouts, 429/502/503/504). On
+// non-transient errors we throw AbortError to stop p-retry immediately; the
+// Agent loop then catches the throw and emits an error tool_result for the
+// model to react to.
+// ---------------------------------------------------------------------------
+
+export function getAgentTools(enabledTools: string[], turn: Turn): AgentTool<TSchema>[] {
+  return Array.from(tools.values())
+    .filter((t) => enabledTools.includes(t.definition.name))
+    .map((handler) => toolHandlerToAgentTool(handler, turn));
+}
+
+function toolHandlerToAgentTool(
+  handler: ToolHandler,
+  turn: Turn
+): AgentTool<TSchema> {
+  const parameters = Type.Unsafe<unknown>(handler.definition.input_schema);
+
+  return {
+    name: handler.definition.name,
+    description: handler.definition.description,
+    label: handler.definition.name,
+    parameters,
+    execute: async (
+      _toolCallId: string,
+      params: unknown
+    ): Promise<AgentToolResult<unknown>> => {
+      try {
+        const result = await pRetry(
+          async () => {
+            try {
+              return await handler.execute(
+                (params as Record<string, unknown>) ?? {},
+                { turn }
+              );
+            } catch (err) {
+              // Non-transient errors bypass the retry budget entirely.
+              if (!isTransientError(err)) {
+                throw new AbortError(err instanceof Error ? err.message : String(err));
+              }
+              throw err;
+            }
+          },
+          {
+            retries: 2,
+            minTimeout: 1000,
+            factor: 2,
+            onFailedAttempt: ({ error, attemptNumber, retriesLeft }) => {
+              console.warn(
+                `[tools] ${handler.definition.name} transient error, attempt ${attemptNumber}, ${retriesLeft} retries left: ${error.message}`
+              );
+            },
+          }
+        );
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+        };
+      } catch (error) {
+        // Unwrap AbortError for a cleaner message to the model.
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.error(`[tools] ${handler.definition.name} failed: ${errMsg}`);
+        throw new Error(errMsg);
+      }
+    },
+  };
 }
