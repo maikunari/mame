@@ -5,8 +5,18 @@ import { Gateway } from "./gateway.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
 import { Vault } from "./vault.js";
 import { loadTools } from "./tools/index.js";
+import { loadSystemdCredentials } from "./init-credentials.js";
 
 async function main(): Promise<void> {
+  // Load systemd credentials FIRST so MAME_MASTER_KEY is in process.env
+  // before anything constructs the Vault. No-op if $CREDENTIALS_DIRECTORY
+  // isn't set (i.e. when running under pm2 or directly from a shell that
+  // already has the env vars).
+  const credResult = loadSystemdCredentials();
+  if (credResult.source === "systemd" && credResult.loaded.length > 0) {
+    console.log(`[init] Loaded ${credResult.loaded.length} credential(s) from systemd: ${credResult.loaded.join(", ")}`);
+  }
+
   // Load all tool registrations before anything else
   await loadTools();
   // Parse --persona flag
