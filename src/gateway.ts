@@ -10,6 +10,9 @@ import { SignalClient, type SignalMessage } from "./signal.js";
 import { runSignalOnboarding } from "./onboard.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
+import { childLogger } from "./logger.js";
+
+const log = childLogger("gateway");
 
 function splitMessage(text: string, maxLen: number): string[] {
   if (text.length <= maxLen) return [text];
@@ -51,7 +54,7 @@ export class Gateway {
     }
     await this.startWebhooks();
     this.startTUI();
-    console.log(`🫘 ${this.persona.name} is awake.`);
+    // Note: "Mame is awake" log is emitted by index.ts after heartbeat.start()
   }
 
   // --- Discord ---
@@ -99,11 +102,11 @@ export class Gateway {
 
     const token = await this.vault.get("global", "DISCORD_BOT_TOKEN");
     if (!token) {
-      console.error("[gateway] DISCORD_BOT_TOKEN not found in vault");
+      log.error("DISCORD_BOT_TOKEN not found in vault — Discord will not start");
       return;
     }
     await this.discord.login(token);
-    console.log(`[gateway] Discord connected as ${this.discord.user?.tag}`);
+    log.info({ user: this.discord.user?.tag }, `Discord connected as ${this.discord.user?.tag}`);
   }
 
   // --- LINE (acknowledge-then-push pattern) ---
@@ -112,7 +115,7 @@ export class Gateway {
     const channelSecret = await this.vault.get("global", "LINE_CHANNEL_SECRET");
 
     if (!channelAccessToken || !channelSecret) {
-      console.error("[gateway] LINE credentials not found in vault");
+      log.error("LINE credentials not found in vault — LINE will not start");
       return;
     }
 
@@ -160,7 +163,7 @@ export class Gateway {
       }
     );
 
-    console.log("[gateway] LINE webhook registered at /line/webhook");
+    log.info("LINE webhook registered at /line/webhook");
   }
 
   // --- Signal ---
@@ -195,7 +198,7 @@ export class Gateway {
 
       if (!isKnownUser && !isMappedUser) {
         // Unknown user — start onboarding
-        console.log(`[signal] Unknown user ${msg.sender} — starting onboarding`);
+        log.info({ sender: msg.sender }, "Unknown Signal user — starting onboarding");
         this.onboardingSessions.add(msg.sender);
         messageQueues.set(msg.sender, []);
 
@@ -222,12 +225,12 @@ export class Gateway {
             sendFn,
             receiveFn,
           );
-          console.log(`[signal] Onboarding complete for ${msg.sender}`);
+          log.info({ sender: msg.sender }, "Signal onboarding complete");
 
           // Notify admin to restart for new persona to take effect
           await this.notify(undefined, `🫘 New persona onboarded via Signal: ${msg.sender}. Restart to activate: pm2 restart all`);
         } catch (err) {
-          console.error(`[signal] Onboarding failed for ${msg.sender}: ${err}`);
+          log.error({ sender: msg.sender, err: String(err) }, "Signal onboarding failed");
           await this.signal!.send(msg.sender, "Sorry, something went wrong during setup. Please try again.");
         } finally {
           this.onboardingSessions.delete(msg.sender);
@@ -247,7 +250,7 @@ export class Gateway {
     });
 
     await this.signal.start();
-    console.log(`[gateway] Signal connected as ${signalNumber}`);
+    log.info({ number: signalNumber }, `Signal connected as ${signalNumber}`);
   }
 
   // --- Webhooks (New Relic, GitHub, AgentMail) ---
@@ -276,7 +279,7 @@ export class Gateway {
     const port = this.config.webhook?.port || 3847;
     const host = process.env.MAME_BIND_HOST || "0.0.0.0";
     this.webhookServer.listen(port, host, () => {
-      console.log(`[gateway] Webhook server listening on ${host}:${port}`);
+      log.info({ host, port }, `Webhook server listening on ${host}:${port}`);
     });
   }
 
@@ -392,7 +395,7 @@ export class Gateway {
             return;
           }
         } catch (err) {
-          console.error(`[gateway] Discord notify failed: ${err}`);
+          log.error({ err: String(err) }, "Discord notify failed");
         }
       }
     }

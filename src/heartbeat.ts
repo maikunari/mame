@@ -31,6 +31,9 @@ import {
 import { think, type Turn } from "./agent.js";
 import { MAME_HOME, type PersonaConfig, type MameConfig } from "./config.js";
 import { parseModelString } from "./model-router.js";
+import { childLogger } from "./logger.js";
+
+const log = childLogger("heartbeat");
 
 interface HeartbeatEntry {
   cron: string;
@@ -138,21 +141,21 @@ Common pattern translations:
       `Parse this schedule document and call submit_schedule with the extracted entries:\n\n${markdown}`
     );
   } catch (err) {
-    console.error(
-      `[heartbeat] Schedule parser threw: ${err instanceof Error ? err.message : String(err)}`
+    log.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "Schedule parser threw"
     );
     return [];
   }
 
   if (agent.state.errorMessage) {
-    console.error(`[heartbeat] Schedule parser error: ${agent.state.errorMessage}`);
+    log.error({ err: agent.state.errorMessage }, "Schedule parser error");
     return [];
   }
 
   if (captured === null) {
-    console.error(
-      `[heartbeat] Schedule parser did not call submit_schedule. ` +
-        `The model returned text instead of invoking the tool. No entries loaded.`
+    log.error(
+      "Schedule parser did not call submit_schedule. The model returned text instead of invoking the tool. No entries loaded."
     );
     return [];
   }
@@ -181,7 +184,7 @@ export class HeartbeatScheduler {
     const heartbeatPath = path.join(MAME_HOME, "HEARTBEAT.md");
 
     if (!fs.existsSync(heartbeatPath)) {
-      console.log("[heartbeat] No HEARTBEAT.md found, skipping scheduler");
+      log.info("No HEARTBEAT.md found, skipping scheduler");
       return;
     }
 
@@ -190,7 +193,7 @@ export class HeartbeatScheduler {
     // Reload when HEARTBEAT.md changes
     this.fileWatcher = fs.watch(heartbeatPath, async (eventType) => {
       if (eventType === "change") {
-        console.log("[heartbeat] HEARTBEAT.md changed, reloading schedule...");
+        log.info("HEARTBEAT.md changed, reloading schedule");
         await this.loadSchedule();
       }
     });
@@ -225,7 +228,10 @@ export class HeartbeatScheduler {
           entry.cron,
           { timezone },
           async () => {
-            console.log(`[heartbeat] Running: ${entry.prompt.slice(0, 50)}...`);
+            log.info(
+              { cron: entry.cron, prompt_preview: entry.prompt.slice(0, 50) },
+              "Running scheduled check"
+            );
 
             const turn: Turn = {
               message: entry.prompt,
@@ -246,7 +252,10 @@ export class HeartbeatScheduler {
             // still a daily brief).
             const trimmed = reply.trim();
             if (trimmed === "ALL_CLEAR" || trimmed === "ALL_CLEAR.") {
-              console.log(`[heartbeat] Suppressed (ALL_CLEAR): ${entry.prompt.slice(0, 50)}...`);
+              log.info(
+                { cron: entry.cron, prompt_preview: entry.prompt.slice(0, 50) },
+                "Suppressed (ALL_CLEAR)"
+              );
               return;
             }
 
@@ -256,12 +265,14 @@ export class HeartbeatScheduler {
 
         this.jobs.push(job);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[heartbeat] Invalid cron expression '${entry.cron}' — skipping: ${msg}`);
+        log.error(
+          { cron: entry.cron, err: err instanceof Error ? err.message : String(err) },
+          "Invalid cron expression, skipping"
+        );
       }
     }
 
-    console.log(`[heartbeat] Loaded ${this.jobs.length} scheduled checks`);
+    log.info({ count: this.jobs.length }, `Loaded ${this.jobs.length} scheduled checks`);
   }
 
   private async parseSchedule(markdown: string): Promise<HeartbeatEntry[]> {
@@ -272,13 +283,14 @@ export class HeartbeatScheduler {
     try {
       piModel = getModel(route.backend as KnownProvider as any, route.modelId as any);
     } catch (err) {
-      console.error(
-        `[heartbeat] Model ${modelStr} lookup failed: ${err instanceof Error ? err.message : String(err)}`
+      log.error(
+        { model: modelStr, err: err instanceof Error ? err.message : String(err) },
+        "Model lookup failed"
       );
       return [];
     }
     if (!piModel) {
-      console.error(`[heartbeat] Model ${modelStr} not registered in pi-ai catalog`);
+      log.error({ model: modelStr }, "Model not registered in pi-ai catalog");
       return [];
     }
 
@@ -302,7 +314,10 @@ export class HeartbeatScheduler {
 
     const results: string[] = [];
     for (const entry of entries) {
-      console.log(`[heartbeat] Running: ${entry.prompt.slice(0, 60)}...`);
+      log.info(
+        { cron: entry.cron, prompt_preview: entry.prompt.slice(0, 60) },
+        "Running scheduled check (manual)"
+      );
 
       const turn: Turn = {
         message: entry.prompt,

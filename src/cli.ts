@@ -5,7 +5,7 @@ import { execSync } from "child_process";
 import { runOnboarding } from "./onboard.js";
 import { MAME_HOME, loadConfig } from "./config.js";
 import { Vault } from "./vault.js";
-import { recall, listMemories, memoryStats } from "./memory.js";
+import { recall, listMemories, memoryStats, formatMemoryTimestamp } from "./memory.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
 import { loadTools } from "./tools/index.js";
 import { loadSystemdCredentials } from "./init-credentials.js";
@@ -287,12 +287,15 @@ async function main(): Promise<void> {
 
     case "memory": {
       const sub = args[1];
+      const timezone = loadConfig().timezone || "Asia/Tokyo";
       if (sub === "search") {
         const query = args.slice(2).join(" ");
         if (!query) { console.log("Usage: mame memory search <query>"); break; }
         const results = await recall(query);
         for (const r of results) {
-          console.log(`[${r.id}] [${r.category}] ${r.content}`);
+          console.log(
+            `[${r.id}] [${r.category}] ${formatMemoryTimestamp(r.created_at, timezone)}\n    ${r.content}`
+          );
         }
         if (results.length === 0) console.log("No memories found.");
       } else if (sub === "list") {
@@ -300,7 +303,9 @@ async function main(): Promise<void> {
         const project = projectFlag >= 0 ? args[projectFlag + 1] : undefined;
         const results = await listMemories(project);
         for (const r of results) {
-          console.log(`[${r.id}] [${r.category}] ${r.project || "global"}: ${r.content}`);
+          console.log(
+            `[${r.id}] [${r.category}] ${r.project || "global"} — ${formatMemoryTimestamp(r.created_at, timezone)}\n    ${r.content}`
+          );
         }
       } else if (sub === "stats") {
         const stats = await memoryStats();

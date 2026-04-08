@@ -18,6 +18,9 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { childLogger } from "./logger.js";
+
+const log = childLogger("init-credentials");
 
 export interface CredentialLoadResult {
   source: "systemd" | "none";
@@ -38,7 +41,7 @@ export function loadSystemdCredentials(): CredentialLoadResult {
   try {
     entries = readdirSync(dir);
   } catch (err) {
-    console.error(`[init-credentials] Failed to read ${dir}: ${err instanceof Error ? err.message : err}`);
+    log.error({ dir, err: err instanceof Error ? err.message : String(err) }, "Failed to read credentials directory");
     return { source: "systemd", loaded: [], skipped: [] };
   }
 
@@ -70,7 +73,7 @@ export function loadSystemdCredentials(): CredentialLoadResult {
       process.env[filename] = value;
       loaded.push(filename);
     } catch (err) {
-      console.error(`[init-credentials] Failed to load ${filename}: ${err instanceof Error ? err.message : err}`);
+      log.error({ filename, err: err instanceof Error ? err.message : String(err) }, "Failed to load credential");
       skipped.push(filename);
     }
   }

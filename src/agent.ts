@@ -23,9 +23,12 @@ import {
 } from "@mariozechner/pi-ai";
 import { recall } from "./memory.js";
 import { buildSystemPrompt } from "./prompt.js";
-import { loadSoul } from "./config.js";
+import { loadSoul, loadConfig } from "./config.js";
 import { parseModelString } from "./model-router.js";
 import { getAgentTools } from "./tools/index.js";
+import { childLogger } from "./logger.js";
+
+const log = childLogger("agent");
 
 export interface Turn {
   message: string;
@@ -88,7 +91,8 @@ export async function think(turn: Turn): Promise<string> {
 
     // 3. Load soul and assemble system prompt
     const soul = loadSoul(turn.soulFile);
-    const systemPrompt = buildSystemPrompt({ soul, memories, projectContext });
+    const timezone = loadConfig().timezone;
+    const systemPrompt = buildSystemPrompt({ soul, memories, projectContext, timezone });
 
     // 4. Resolve the model via pi-ai's catalog
     const route = parseModelString(turn.model);
@@ -142,7 +146,7 @@ export async function think(turn: Turn): Promise<string> {
 
     // 10. Extract the final assistant text reply.
     if (agent.state.errorMessage) {
-      console.error(`[agent] run error: ${agent.state.errorMessage}`);
+      log.error({ err: agent.state.errorMessage, channel: turn.channel, persona: turn.personaId }, "Agent run error");
       return `Something went wrong while processing your message. Error: ${agent.state.errorMessage}`;
     }
 
@@ -151,7 +155,7 @@ export async function think(turn: Turn): Promise<string> {
   } catch (error) {
     // Outermost catch — keeps the daemon alive if anything escapes pi-agent-core.
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[agent] think() error: ${errMsg}`);
+    log.error({ err: errMsg, channel: turn.channel, persona: turn.personaId }, "think() error");
     return `Something went wrong while processing your message. Error: ${errMsg}`;
   }
 }
