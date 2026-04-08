@@ -112,16 +112,37 @@ registerTool({
 
     const mcpUrl = process.env.MAME_MCP_URL || "http://127.0.0.1:3848/mcp";
 
+    // Build a PATH that includes common user install locations for the
+    // claude binary. systemd services run with a sanitized PATH (usually
+    // /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin) and
+    // don't source ~/.bashrc, so any tool installed via npm-global, bun,
+    // or another user-local prefix is invisible without this enhancement.
+    // The user can override the explicit binary with MAME_CLAUDE_BIN if
+    // they install it somewhere unusual.
+    const home = process.env.HOME || "";
+    const pathAdditions = [
+      `${home}/.npm-global/bin`,
+      `${home}/.bun/bin`,
+      `${home}/.local/bin`,
+      `${home}/.cargo/bin`,
+      "/usr/local/bin",
+    ];
+    const enhancedPath = [...pathAdditions, process.env.PATH || ""]
+      .filter(Boolean)
+      .join(":");
+    const claudeBin = process.env.MAME_CLAUDE_BIN || "claude";
+
     // claude -p runs Claude Code in non-interactive mode
     try {
       return await new Promise((resolve) => {
         const proc = execFile(
-          "claude",
+          claudeBin,
           ["-p", task],
           {
             cwd: projectPath,
             env: {
               ...process.env,
+              PATH: enhancedPath,
               ...env,
               // Tell Claude Code where the ask_human MCP server is. The
               // user's Claude Code config needs to declare a server
