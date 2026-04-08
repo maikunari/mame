@@ -1,6 +1,6 @@
 // src/prompt.ts — System prompt assembly (~30 lines per spec)
 
-import { formatMemoryTimestamp, type Memory } from "./memory.js";
+import { formatCurrentTimeInTimezone, formatMemoryTimestamp, type Memory } from "./memory.js";
 
 export interface PromptContext {
   soul: string;
@@ -22,6 +22,16 @@ export function buildSystemPrompt({
 }: PromptContext): string {
   const tz = timezone || "Asia/Tokyo";
 
+  // Inject the current wall-clock time at the top of every system prompt
+  // so the model always knows what day/time it is in the user's
+  // timezone. Addresses the "Mame loses track of time mid-conversation"
+  // problem: without this, the only temporal reference the model has is
+  // its training cutoff (weeks or months stale) plus stored memory
+  // timestamps, which it has to reason about indirectly. With this, it
+  // sees "Wednesday, 2026-04-08T13:45:12+09:00 JST" on every turn —
+  // unambiguous anchor, no inference required.
+  const currentTime = formatCurrentTimeInTimezone(tz);
+
   // Prefix each memory with its stored-at timestamp in the user's local
   // timezone with an ISO offset, a short TZ label, and a relative-time
   // suffix. Lets the model reason about recency ("this was 3 weeks ago")
@@ -35,6 +45,10 @@ ${memories
     : "";
 
   return `${soul}
+
+## Current Context
+It is currently ${currentTime}.
+When users ask about "today", "yesterday", "last week", or reference times, use this as your anchor — not your training data cutoff. When scheduling or discussing times with people in other timezones, explicitly state both local and remote times to avoid ambiguity.
 
 ${projectContext ? `## Current Project\n${projectContext}` : ""}
 
