@@ -233,15 +233,60 @@ export async function remember(
   return result.lastInsertRowid as number;
 }
 
-// Sanitize input for FTS5 — quote each term to avoid syntax errors from special chars
+// Common English stopwords and recall-shaped conversational filler. The
+// first group is standard; the second group is the "do you remember..." /
+// "what did I tell you about..." vocabulary that's semantically loaded
+// from the user's perspective but totally useless for FTS5 matching
+// (memory bodies never contain "remember", "asked", "yesterday" etc).
+//
+// Stripping these lets a query like "what do you remember about Tokyo
+// weather or Bitcoin I asked about yesterday" collapse down to the
+// actually-searchable terms: tokyo, weather, bitcoin.
+const FTS_STOPWORDS = new Set([
+  // Articles / conjunctions / pronouns
+  "a", "about", "after", "all", "am", "an", "and", "any", "are", "as", "at",
+  "be", "been", "being", "but", "by", "can", "could", "did", "do", "does",
+  "doing", "down", "during", "each", "few", "for", "from", "further", "had",
+  "has", "have", "having", "he", "her", "here", "hers", "him", "his", "how",
+  "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me", "more",
+  "most", "my", "myself", "no", "nor", "not", "now", "of", "off", "on",
+  "once", "only", "or", "other", "our", "ours", "out", "over", "own", "same",
+  "she", "should", "so", "some", "such", "than", "that", "the", "their",
+  "theirs", "them", "themselves", "then", "there", "these", "they", "this",
+  "those", "through", "to", "too", "under", "until", "up", "very", "was",
+  "we", "were", "what", "when", "where", "which", "while", "who", "whom",
+  "why", "will", "with", "would", "you", "your", "yours", "yourself",
+  // Conversational recall words — loaded for humans, noise for FTS5
+  "ask", "asked", "asking", "know", "knew", "knows", "mention", "mentioned",
+  "recall", "remember", "remembered", "said", "say", "says", "talked",
+  "tell", "told", "think", "thought",
+  // Vague time references the memory bodies never contain
+  "ago", "earlier", "last", "later", "month", "recent", "recently", "today",
+  "tomorrow", "week", "weeks", "year", "years", "yesterday",
+]);
+
+// Sanitize input for FTS5 — quote each term to avoid syntax errors from
+// special chars, drop stopwords, and use OR semantics so a natural-language
+// query matches documents containing ANY of the meaningful terms. BM25
+// ranking naturally sorts documents matching more terms higher, which is
+// exactly the right default for recall: "what do you remember about Tokyo
+// weather" should find the Tokyo memory even though it doesn't contain
+// all the words from the question.
+//
+// Previous implementation joined terms with space (implicit AND in FTS5),
+// which meant a natural-language query had to match ALL terms verbatim
+// and returned empty for anything beyond a single keyword.
 function sanitizeFts5Query(query: string): string {
-  // Split into words, wrap each in double quotes to escape FTS5 operators
   const terms = query
-    .replace(/[^\w\s]/g, " ")  // Strip punctuation
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ") // Strip punctuation
     .split(/\s+/)
-    .filter((t) => t.length > 0)
+    .filter((t) => t.length >= 3 && !FTS_STOPWORDS.has(t))
     .map((t) => `"${t}"`);
-  return terms.join(" ");
+
+  if (terms.length === 0) return "";
+
+  return terms.join(" OR ");
 }
 
 export async function recall(
