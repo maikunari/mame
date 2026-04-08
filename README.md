@@ -2,7 +2,7 @@
 
 **v0.1.2** — A minimal persistent AI agent that lives on your machine, talks to you on Discord, remembers what matters, and orchestrates other agents on your behalf.
 
-~6,000 lines of TypeScript. 17 dependencies. One SQLite file for memory. Production-verified on a home Linux server.
+~6,000 lines of TypeScript. 17 dependencies. One SQLite file for memory. Runs on any Linux host with systemd — a home server, VPS, or cloud instance all work the same way.
 
 まめ — *diligent, hardworking, small but mighty.*
 
@@ -106,7 +106,7 @@ The result: **"lumbar discomfort"** finds the **"back pain"** memory even though
 Timestamps are surfaced to the model in full timezone-explicit form:
 
 ```
-[2026-04-08T12:12:44+09:00 JST (3 hours ago)] Nanae's back pain started last Tuesday
+[2026-04-08T12:12:44+09:00 JST (3 hours ago)] User mentioned their back pain started last Tuesday
 ```
 
 The model reasons about recency, timezone offsets for scheduling, and cross-timezone math (JST ↔ EST) from that anchor instead of guessing.
@@ -245,7 +245,7 @@ discord:
 ```
 
 ```yaml
-# ~/.mame/personas/nanae.yml — Japanese personal assistant via Signal
+# ~/.mame/personas/ayaka.yml — Japanese personal assistant via Signal
 name: "Siri-chan"
 soul: "SOUL-Siri.md"
 language: "ja"
