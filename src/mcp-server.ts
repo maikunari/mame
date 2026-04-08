@@ -20,23 +20,35 @@
 // HTTP on localhost keeps the server inside the Mame process, which is
 // the whole point.
 //
-// ## Request flow
+// ## Per-session transport architecture
 //
-// 1. Claude Code (configured with http://localhost:3848 as an MCP server)
-//    calls ask_human with a question argument
-// 2. handleAskHuman() reads the current active task from ask-human-state
-// 3. It registers a pending question, which causes askHuman() to send
-//    the question to the user's channel via onQuestion callback
-// 4. The promise hangs until the user replies (via Discord message
-//    handler in gateway.ts) or the 10-minute timeout fires
-// 5. The resolved answer becomes the tool call result, MCP returns it
-//    to Claude Code, Claude Code resumes
+// Earlier iterations created ONE McpServer + ONE StreamableHTTPServerTransport
+// at daemon startup and reused them for every incoming request. That
+// works for the very first client (curl, claude mcp list) but every
+// subsequent client gets:
+//
+//   {"jsonrpc":"2.0","error":{"code":-32600,
+//    "message":"Invalid Request: Server already initialized"},"id":null}
+//
+// because the SDK transport tracks initialization state per instance.
+// Once it's initialized, it rejects further `initialize` requests.
+//
+// The fix follows the SDK's official pattern: keep a Map<sessionId,
+// transport> and create a fresh transport (and McpServer) on each new
+// session. Subsequent requests carry an `Mcp-Session-Id` header that
+// the handler uses to find the matching transport. When a session
+// closes, we remove it from the map.
+//
+// One McpServer per session is the right architectural shape because
+// each Claude Code invocation runs as its own client and shouldn't
+// share initialization state with any other client.
 
 import { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import express, { type Request, type Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { askHuman, getActiveTask, type ActiveTask } from "./ask-human-state.js";
 import { childLogger } from "./logger.js";
@@ -87,27 +99,12 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
   const port = options.port ?? 3848;
   const host = options.host ?? "127.0.0.1";
 
-  const server = buildMcpServer(options.onQuestion);
-
-  // Stateful mode — generates a Mcp-Session-Id on initialize and tracks
-  // the session across subsequent requests. Originally tried stateless
-  // mode for simplicity but Claude Code's MCP HTTP client expects
-  // stateful: it issues an initialize POST, expects a session ID back
-  // in the response headers, then sends notifications/initialized as
-  // a separate request that requires the session ID. Stateless mode
-  // returned 500 on the second request because the SDK couldn't
-  // associate the notification with any session.
-  //
-  // ask-human-state tracks the *task* state (which channel dispatched
-  // the active claude_code task); the MCP session is a different layer
-  // of state that lives inside the SDK transport. Both can coexist —
-  // the MCP session is per-Claude-Code-invocation and dies when that
-  // process exits.
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-
-  await server.connect(transport);
+  // Per-session map of transport instances. Each MCP client (each Claude
+  // Code invocation) gets its own session created on the initialize
+  // request, identified by a UUID returned in the Mcp-Session-Id header.
+  // Subsequent requests carry that header and we route them to the
+  // matching transport.
+  const transports = new Map<string, StreamableHTTPServerTransport>();
 
   const app = express();
 
@@ -115,9 +112,87 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
   // but the limit protects us from runaway payloads.
   app.use(express.json({ limit: "1mb" }));
 
-  // Single endpoint that the MCP spec expects. Both POST (tool calls)
-  // and GET (SSE streams) go through handleRequest.
+  /**
+   * Main MCP handler — handles POST (requests + notifications), GET (SSE
+   * streams for server-initiated messages), and DELETE (session close).
+   *
+   * Session lifecycle:
+   * - First POST without Mcp-Session-Id, body is an initialize request:
+   *   create a new transport + new McpServer, store in map, generate
+   *   session ID, route the request through the new transport.
+   * - Subsequent POST/GET/DELETE with Mcp-Session-Id header: look up
+   *   the existing transport in the map and route through it.
+   * - DELETE or transport.onclose: remove from map.
+   */
   const mcpHandler = async (req: Request, res: Response) => {
+    const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+    let transport: StreamableHTTPServerTransport | undefined;
+
+    if (sessionId && transports.has(sessionId)) {
+      // Existing session — reuse the transport
+      transport = transports.get(sessionId);
+    } else if (!sessionId && req.method === "POST" && isInitializeRequest(req.body)) {
+      // New session — spin up a fresh transport and McpServer for this client
+      log.info("Creating new MCP session");
+
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (id) => {
+          if (transport) {
+            transports.set(id, transport);
+            log.info({ sessionId: id, activeSessions: transports.size }, "MCP session initialized");
+          }
+        },
+      });
+
+      transport.onclose = () => {
+        if (transport?.sessionId && transports.has(transport.sessionId)) {
+          transports.delete(transport.sessionId);
+          log.info(
+            { sessionId: transport.sessionId, activeSessions: transports.size },
+            "MCP session closed"
+          );
+        }
+      };
+
+      // Each session gets its own McpServer instance with the ask_human
+      // tool registered. They all share the same onQuestion callback so
+      // questions still route to the same gateway.
+      const server = buildMcpServer(options.onQuestion);
+      await server.connect(transport);
+    } else {
+      // Invalid: either has a session ID we don't know, or no session ID
+      // and not an initialize request
+      log.warn(
+        {
+          method: req.method,
+          sessionId,
+          hasBody: !!req.body,
+          isInit: req.body ? isInitializeRequest(req.body) : false,
+        },
+        "MCP request without valid session"
+      );
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Bad Request: No valid session ID provided",
+        },
+        id: null,
+      });
+      return;
+    }
+
+    if (!transport) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: { code: -32603, message: "Internal server error: no transport" },
+        id: null,
+      });
+      return;
+    }
+
     try {
       await transport.handleRequest(
         req as unknown as IncomingMessage,
@@ -126,16 +201,16 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
       );
     } catch (err) {
       log.error(
-        { err: err instanceof Error ? err.message : String(err) },
+        {
+          err: err instanceof Error ? err.message : String(err),
+          sessionId: transport.sessionId,
+        },
         "MCP handler error"
       );
       if (!res.headersSent) {
         res.status(500).json({
           jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
+          error: { code: -32603, message: "Internal server error" },
           id: null,
         });
       }
@@ -152,6 +227,7 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
     const task = getActiveTask();
     res.json({
       ok: true,
+      activeSessions: transports.size,
       activeTask: task
         ? {
             taskId: task.taskId,
@@ -171,8 +247,16 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
         port,
         close: async () => {
           log.info("MCP server shutting down");
+          // Close all active transports
+          for (const t of transports.values()) {
+            try {
+              await t.close();
+            } catch {
+              /* ignore */
+            }
+          }
+          transports.clear();
           await new Promise<void>((r) => httpServer.close(() => r()));
-          await server.close();
         },
       });
     });
@@ -185,9 +269,9 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
 }
 
 /**
- * Build the MCP server with the single ask_human tool registered.
- * Separated from startMcpServer() so it can be instantiated for tests
- * without needing a real HTTP listener.
+ * Build a fresh McpServer instance with the single ask_human tool
+ * registered. Called once per MCP session — each connecting client
+ * gets its own server instance so initialization state is isolated.
  */
 function buildMcpServer(onQuestion: DeliverQuestionFn): McpServer {
   const server = new McpServer(
