@@ -1,0 +1,16 @@
+# package-lock.json tends to drift on branch switches between darwin and
+# linux because npm regenerates the rollup `libc` field differently on
+# each platform. This is purely noise — the actual package versions are
+# identical. The `merge=ours` strategy tells git to keep whichever copy
+# of the file is already on the current branch during a merge, and the
+# combination with the `binary` attribute avoids a line-by-line diff.
+#
+# To make this work, the operator also needs to declare the "ours"
+# merge driver once per clone:
+#
+#     git config merge.ours.driver true
+#
+# That's a one-time setup step documented in the chore/gitattributes
+# commit that introduced this file. Without it, the attribute is a no-op
+# and git falls back to the default merge strategy.
+package-lock.json merge=ours
