@@ -1,15 +1,35 @@
-// src/agent.ts — The agent loop (~50 lines per spec, extended with error handling)
+// src/agent.ts — The agent loop, now running on pi-agent-core's Agent class.
+//
+// Evening 2 of the pi-ai migration. What changed:
+//
+// - The hand-rolled `while (stop_reason === "tool_use")` loop is gone. Tool
+//   execution is driven by pi-agent-core internally.
+// - The conversation buffer now stores pi-ai Message[] directly instead of
+//   our Anthropic-flavored ChatMessage[], which is one less translation layer.
+// - A fresh Agent instance is constructed per think() call so tool closures
+//   see the current Turn context and the system prompt reflects freshly
+//   recalled memories.
+// - Error handling: pi-agent-core swallows provider/tool errors internally
+//   and pushes a failure assistant message with stopReason "error" onto the
+//   transcript. We surface state.errorMessage if present.
 
-import type Anthropic from "@anthropic-ai/sdk";
-import { recall, remember } from "./memory.js";
+import { Agent } from "@mariozechner/pi-agent-core";
+import {
+  getModel,
+  type ImageContent,
+  type KnownProvider,
+  type Message,
+  type TextContent,
+} from "@mariozechner/pi-ai";
+import { recall } from "./memory.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { loadSoul } from "./config.js";
-import { chatCompletion, type ChatMessage, type ToolDefinition } from "./model-router.js";
-import { executeToolCalls, getToolDefinitions } from "./tools/index.js";
+import { parseModelString } from "./model-router.js";
+import { getAgentTools } from "./tools/index.js";
 
 export interface Turn {
   message: string;
-  imageUrls?: string[];  // Attached images (Discord, LINE)
+  imageUrls?: string[];
   channel: "discord" | "line" | "signal" | "email" | "webhook" | "cli" | "heartbeat";
   project?: string;
   personaId: string;
@@ -18,35 +38,42 @@ export interface Turn {
   tools: string[];
 }
 
-// Conversation buffer keyed by personaId:channelId — last ~20 messages per channel
-// TODO: optional SQLite persistence for non-technical personas who need cross-restart continuity
-const conversationBuffer = new Map<string, ChatMessage[]>();
+// Conversation buffer keyed by personaId:channel:project — last ~20 pi-ai
+// messages per channel. Switching from ChatMessage[] to Message[] eliminates
+// the translation pass we used to do on every turn.
+const conversationBuffer = new Map<string, Message[]>();
 const MAX_BUFFER_SIZE = 20;
 
 function getBufferKey(turn: Turn): string {
   return `${turn.personaId}:${turn.channel}:${turn.project || "global"}`;
 }
 
-function getHistory(turn: Turn): ChatMessage[] {
+function getHistory(turn: Turn): Message[] {
   return conversationBuffer.get(getBufferKey(turn)) || [];
 }
 
-function appendToHistory(turn: Turn, messages: ChatMessage[]): void {
+function setHistory(turn: Turn, messages: Message[]): void {
   const key = getBufferKey(turn);
-  const history = conversationBuffer.get(key) || [];
-  history.push(...messages);
-  // Keep only the last MAX_BUFFER_SIZE messages
-  if (history.length > MAX_BUFFER_SIZE) {
-    conversationBuffer.set(key, history.slice(-MAX_BUFFER_SIZE));
-  } else {
-    conversationBuffer.set(key, history);
-  }
+  const trimmed = messages.length > MAX_BUFFER_SIZE
+    ? messages.slice(-MAX_BUFFER_SIZE)
+    : messages;
+  conversationBuffer.set(key, trimmed);
 }
 
 async function loadProjectContext(project: string): Promise<string> {
-  // Load project-specific context (config paths, recent activity, etc.)
-  // For now, return a minimal context string from config
+  // For now, return a minimal context string from config.
   return `Project: ${project}`;
+}
+
+async function fetchImageAsContent(url: string): Promise<ImageContent | null> {
+  try {
+    const res = await fetch(url);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const mimeType = res.headers.get("content-type") || "image/png";
+    return { type: "image", data: buffer.toString("base64"), mimeType };
+  } catch {
+    return null;
+  }
 }
 
 export async function think(turn: Turn): Promise<string> {
@@ -61,77 +88,75 @@ export async function think(turn: Turn): Promise<string> {
 
     // 3. Load soul and assemble system prompt
     const soul = loadSoul(turn.soulFile);
-    const system = buildSystemPrompt({ soul, memories, projectContext });
+    const systemPrompt = buildSystemPrompt({ soul, memories, projectContext });
 
-    // 4. Build messages with conversation history
+    // 4. Resolve the model via pi-ai's catalog
+    const route = parseModelString(turn.model);
+    const piModel = getModel(route.backend as KnownProvider as any, route.modelId as any);
+    if (!piModel) {
+      return `Model ${route.backend}/${route.modelId} is not registered in pi-ai's catalog.`;
+    }
+
+    // 5. Build tool list (closes over this specific Turn context)
+    const tools = getAgentTools(turn.tools, turn);
+
+    // 6. Construct a fresh Agent with the conversation history seeded from
+    //    our buffer. thinkingLevel: "off" matches the previous behavior —
+    //    Evening 4+ can expose this per-persona if wanted.
     const history = getHistory(turn);
+    const agent = new Agent({
+      initialState: {
+        systemPrompt,
+        model: piModel,
+        tools,
+        thinkingLevel: "off",
+        messages: history,
+      },
+    });
 
-    // Build user message content — include images if attached
-    let userContent: string | { type: string; [key: string]: unknown }[];
+    // 7. Resolve any attached images (Discord, LINE attachments carry URLs)
+    let images: ImageContent[] | undefined;
     if (turn.imageUrls && turn.imageUrls.length > 0) {
-      userContent = [
-        { type: "text", text: turn.message || "What do you see in this image?" },
-        ...turn.imageUrls.map((url) => ({
-          type: "image_url",
-          url,
-        })),
-      ];
-    } else {
-      userContent = turn.message;
+      const resolved = await Promise.all(turn.imageUrls.map(fetchImageAsContent));
+      images = resolved.filter((i): i is ImageContent => i !== null);
+      if (images.length === 0) images = undefined;
     }
 
-    const messages: ChatMessage[] = [
-      ...history,
-      { role: "user" as const, content: userContent as string | Anthropic.ContentBlock[] },
-    ];
+    // 8. Run the agent loop. pi-agent-core handles tool_use → tool_result →
+    //    next turn internally. Errors are swallowed into the transcript.
+    await agent.prompt(turn.message, images);
 
-    // 5. Get tool definitions filtered by persona permissions
-    const tools = getToolDefinitions(turn.tools);
+    // 9. Persist the updated transcript back to our buffer.
+    setHistory(turn, agent.state.messages as Message[]);
 
-    // 6. Run agent loop with tools
-    let response = await chatCompletion(turn.model, system, messages, tools);
-
-    // 7. Execute tool calls until done
-    while (response.stop_reason === "tool_use") {
-      const toolResults = await executeToolCalls(response.content, turn);
-      messages.push({ role: "assistant" as const, content: response.content });
-      messages.push({ role: "user" as const, content: toolResults as unknown as Anthropic.ContentBlock[] });
-      response = await chatCompletion(turn.model, system, messages, tools);
+    // 10. Extract the final assistant text reply.
+    if (agent.state.errorMessage) {
+      console.error(`[agent] run error: ${agent.state.errorMessage}`);
+      return `Something went wrong while processing your message. Error: ${agent.state.errorMessage}`;
     }
 
-    // 8. Extract text response
-    const reply = (response.content || [])
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n") || "I processed your request but had no text response.";
-
-    // 9. Update conversation buffer
-    appendToHistory(turn, [
-      { role: "user", content: turn.message },
-      { role: "assistant", content: reply },
-    ]);
-
-    // 10. Remember what happened (agent decides what's worth storing)
-    await maybeRemember(turn.message, reply, turn.project);
-
-    return reply;
+    const reply = extractFinalAssistantText(agent.state.messages as Message[]);
+    return reply || "I processed your request but had no text response.";
   } catch (error) {
-    // Outer catch — keeps the daemon alive
+    // Outermost catch — keeps the daemon alive if anything escapes pi-agent-core.
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error(`[agent] think() error: ${errMsg}`);
     return `Something went wrong while processing your message. Error: ${errMsg}`;
   }
 }
 
-async function maybeRemember(
-  userMessage: string,
-  agentReply: string,
-  project?: string
-): Promise<void> {
-  // The agent's tool calls handle explicit memory storage.
-  // This function handles implicit memory — storing important interactions
-  // that the agent didn't explicitly save via the memory tool.
-  // For v1, we rely on the agent using the memory tool explicitly.
-  // Auto-extraction happens in improve.ts after complex tasks.
+function extractFinalAssistantText(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    const parts: string[] = [];
+    for (const block of m.content) {
+      if (block.type === "text") {
+        parts.push((block as TextContent).text);
+      }
+    }
+    const joined = parts.join("\n").trim();
+    if (joined) return joined;
+  }
+  return "";
 }
-
