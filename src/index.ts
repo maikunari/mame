@@ -7,6 +7,7 @@ import { Vault } from "./vault.js";
 import { loadTools } from "./tools/index.js";
 import { loadSystemdCredentials } from "./init-credentials.js";
 import { childLogger } from "./logger.js";
+import { startMcpServer } from "./mcp-server.js";
 import { backfillEmbeddings } from "./memory.js";
 import { warmUpEmbedding } from "./embedding.js";
 
@@ -96,6 +97,40 @@ async function main(): Promise<void> {
   // Start gateway (Discord, webhooks, TUI, Signal)
   const gateway = new Gateway(config, persona, vault);
   await gateway.start();
+
+  // Start the embedded MCP server on localhost:3848. The ask_human tool
+  // routes questions from child agents (Claude Code) back to the user
+  // via gateway.notify(). The callback closes over the gateway
+  // instance here so mcp-server.ts stays free of gateway-specific
+  // imports — one-way dependency only.
+  try {
+    await startMcpServer({
+      onQuestion: async (task, question) => {
+        // Format the question with the child agent's task description
+        // as context so the user knows which dispatched task is asking.
+        const prefix = task.description
+          ? `❓ **Question from running task** (_${task.description}_):\n\n`
+          : `❓ **Question from running task:**\n\n`;
+        const body =
+          prefix +
+          question +
+          `\n\n*Reply in this channel to answer. 10-minute timeout.*`;
+        // Route to the channel that dispatched the task. For v1 we use
+        // gateway.notify with undefined project which goes to the
+        // default channel — good enough when there's one Discord
+        // channel per persona. TODO: plumb full channelId through from
+        // the Turn for multi-channel personas.
+        await gateway.notify(undefined, body);
+      },
+    });
+  } catch (err) {
+    // MCP server failure is not fatal — heartbeats and chat keep
+    // working, only the Claude Code ask_human flow is unavailable.
+    log.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      "MCP server failed to start — Claude Code ask_human unavailable this session"
+    );
+  }
 
   // Start heartbeat scheduler
   const heartbeat = new HeartbeatScheduler(config, persona, gateway.notify.bind(gateway));

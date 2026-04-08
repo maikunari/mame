@@ -11,6 +11,7 @@ import { runSignalOnboarding } from "./onboard.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 import { childLogger } from "./logger.js";
+import { provideAnswer, hasPendingQuestion } from "./ask-human-state.js";
 
 const log = childLogger("gateway");
 
@@ -75,6 +76,22 @@ export class Gateway {
       if (!(msg.channelId in channelMap)) return;
 
       const project = channelMap[msg.channelId] || undefined;
+
+      // Evening 6: if a child agent (Claude Code) is currently waiting
+      // for an answer to a question it asked via ask_human, route this
+      // message as the answer INSTEAD of running it through think().
+      // The child agent's MCP tool call will resolve, its execution
+      // continues, and the user gets a one-line acknowledgement so
+      // they know the message went to the subprocess, not to Mame.
+      if (hasPendingQuestion("discord", msg.channelId)) {
+        const delivered = provideAnswer("discord", msg.channelId, msg.content);
+        if (delivered) {
+          await msg.channel.send(
+            "📨 Forwarded your answer to the running task. I'll let you know when it's done."
+          );
+          return;
+        }
+      }
 
       // Capture image attachments
       const imageUrls = msg.attachments
