@@ -268,6 +268,49 @@ export function formatMemoryTimestamp(
 }
 
 /**
+ * Format the current time as a readable, timezone-explicit string for
+ * inclusion in system prompts, log entries, and anywhere else the model
+ * needs to know "what time is it right now?".
+ *
+ * Returns something like "Wednesday, 2026-04-08T13:45:12+09:00 JST".
+ *
+ * Addresses a real pain point we inherited from openclaw: chat agents
+ * lose track of the current date/time during a conversation because
+ * their only reference is the training-data cutoff, which is usually
+ * weeks or months stale. Injecting the real wall-clock time into every
+ * system prompt eliminates the entire class of "what day is it?"
+ * confusion.
+ *
+ * Reuses formatMemoryTimestamp internally and strips the "(just now)"
+ * relative suffix since it's meaningless for the present moment.
+ */
+export function formatCurrentTimeInTimezone(
+  timezone: string,
+  now: Date = new Date()
+): string {
+  // Convert Date → SQLite UTC format so formatMemoryTimestamp can
+  // process it uniformly with stored memory timestamps.
+  const sqliteUtc = now.toISOString().replace("T", " ").slice(0, 19);
+  const full = formatMemoryTimestamp(sqliteUtc, timezone, now);
+  // Strip the trailing " (just now)" or similar relative suffix
+  const withoutRelative = full.replace(/\s*\([^)]*\)\s*$/, "");
+
+  // Prepend the weekday for extra human-readability. Using the user's
+  // timezone so the weekday reflects their local perception, not UTC.
+  let weekday = "";
+  try {
+    weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long",
+    }).format(now);
+  } catch {
+    /* invalid timezone — skip weekday */
+  }
+
+  return weekday ? `${weekday}, ${withoutRelative}` : withoutRelative;
+}
+
+/**
  * Render the distance between two dates as a human-readable relative string.
  * Purely arithmetic — no locale or timezone concerns, no external deps.
  */
