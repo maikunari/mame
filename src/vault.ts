@@ -50,6 +50,17 @@ export class Vault {
     fs.mkdirSync(this.vaultDir, { recursive: true });
   }
 
+  /**
+   * True iff the vault can be constructed in this process — i.e. iff
+   * MAME_MASTER_KEY is set in the environment. Lets callers gracefully
+   * skip the vault when secrets are already in env (e.g. via the
+   * systemd-creds loader on TH50 post-cutover) instead of crashing the
+   * whole CLI on a missing master key.
+   */
+  static isAvailable(): boolean {
+    return !!process.env.MAME_MASTER_KEY;
+  }
+
   async get(project: string, key: string): Promise<string | undefined> {
     const secrets = await this.load(project);
     return secrets[key];
