@@ -33,6 +33,7 @@
 //    to Claude Code, Claude Code resumes
 
 import { IncomingMessage, ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import express, { type Request, type Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -88,12 +89,22 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
 
   const server = buildMcpServer(options.onQuestion);
 
-  // Stateless mode for simplicity — no session tracking, every HTTP
-  // request is independent. Claude Code's MCP client will send an
-  // initialize handshake per session but we don't need to pin sessions
-  // because ask-human-state already tracks the single active task.
+  // Stateful mode — generates a Mcp-Session-Id on initialize and tracks
+  // the session across subsequent requests. Originally tried stateless
+  // mode for simplicity but Claude Code's MCP HTTP client expects
+  // stateful: it issues an initialize POST, expects a session ID back
+  // in the response headers, then sends notifications/initialized as
+  // a separate request that requires the session ID. Stateless mode
+  // returned 500 on the second request because the SDK couldn't
+  // associate the notification with any session.
+  //
+  // ask-human-state tracks the *task* state (which channel dispatched
+  // the active claude_code task); the MCP session is a different layer
+  // of state that lives inside the SDK transport. Both can coexist —
+  // the MCP session is per-Claude-Code-invocation and dies when that
+  // process exits.
   const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => randomUUID(),
   });
 
   await server.connect(transport);
