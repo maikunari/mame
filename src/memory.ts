@@ -1,9 +1,41 @@
-// src/memory.ts — SQLite + FTS5 memory (~50 lines per spec)
+// src/memory.ts — SQLite + FTS5 + sqlite-vec hybrid memory.
+//
+// Storage layers:
+// - memories: canonical table with content, project, category, timestamps,
+//   access count. This is the source of truth.
+// - memories_fts: FTS5 virtual table for keyword search, auto-synced from
+//   memories via triggers.
+// - memories_vec: sqlite-vec virtual table storing 384-dim embeddings
+//   from Xenova/all-MiniLM-L6-v2. Rowids match memories.id so we can
+//   join back to get content.
+//
+// Recall path (Evening 5):
+// 1. Run FTS5 keyword search on the sanitized query (top ~20 results)
+// 2. In parallel, compute query embedding and run vec similarity (top ~20)
+// 3. Merge the two ranked lists via Reciprocal Rank Fusion (RRF)
+// 4. Apply the existing recency + access_count weights as secondary
+//    sort factors
+// 5. Return top N
+//
+// RRF chosen over weighted-sum because it's robust without needing to
+// normalize wildly different score scales between BM25 and cosine
+// similarity. k=60 is the standard RRF constant from the literature.
+//
+// Embeddings are computed lazily: writes succeed even if the model isn't
+// loaded yet (the embedding goes in async after the row lands). Recall
+// falls back to FTS5-only if the embedding model fails to load or the
+// query embedding call errors — the fallback is exactly the pre-Evening-5
+// behavior so nothing gets worse.
 
 import Database, { type Database as DatabaseType } from "better-sqlite3";
+import * as sqliteVec from "sqlite-vec";
 import fs from "fs";
 import path from "path";
 import { MAME_HOME } from "./config.js";
+import { embed, EMBEDDING_DIMENSIONS } from "./embedding.js";
+import { childLogger } from "./logger.js";
+
+const log = childLogger("memory");
 
 // Ensure ~/.mame/ exists before opening the database
 fs.mkdirSync(MAME_HOME, { recursive: true });
@@ -17,7 +49,27 @@ try { fs.chmodSync(dbPath, 0o600); } catch { /* may fail on some systems */ }
 // Enable WAL mode for better concurrent read performance
 db.pragma("journal_mode = WAL");
 
-// Schema — one table, one FTS5 index with content= auto-sync
+// Load sqlite-vec as a loadable extension. better-sqlite3 supports this
+// out of the box via db.loadExtension(). The sqlite-vec npm package
+// ships platform-specific binaries that this resolves automatically.
+// If loading fails (unlikely — the package ships darwin, linux, and
+// windows x64/arm64 binaries), we continue in FTS5-only mode rather
+// than crashing the whole memory system.
+let vecAvailable = false;
+try {
+  sqliteVec.load(db);
+  vecAvailable = true;
+  log.info({ version: (db.prepare("SELECT vec_version() as v").get() as any).v }, "sqlite-vec loaded");
+} catch (err) {
+  log.warn(
+    { err: err instanceof Error ? err.message : String(err) },
+    "sqlite-vec failed to load — falling back to FTS5-only recall"
+  );
+}
+
+// Schema — one canonical table, one FTS5 index with content= auto-sync,
+// one vec virtual table keyed by the same rowid. Vec table only created
+// if sqlite-vec is available.
 db.exec(`
   CREATE TABLE IF NOT EXISTS memories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,6 +103,22 @@ db.exec(`
     VALUES (new.id, new.content, new.project, new.category);
   END;
 `);
+
+if (vecAvailable) {
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS memories_vec
+      USING vec0(embedding FLOAT[${EMBEDDING_DIMENSIONS}]);
+  `);
+
+  // Trigger to garbage-collect vec entries when memories are deleted.
+  // INSERTs are handled explicitly in remember() because we need to
+  // compute the embedding asynchronously — a SQLite trigger can't await.
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS memories_vec_ad AFTER DELETE ON memories BEGIN
+      DELETE FROM memories_vec WHERE rowid = old.id;
+    END;
+  `);
+}
 
 export interface Memory {
   id: number;
@@ -230,7 +298,90 @@ export async function remember(
   const result = db.prepare(
     "INSERT INTO memories (content, project, category, importance) VALUES (?, ?, ?, ?)"
   ).run(content, project || null, category || "general", importance || 0.5);
-  return result.lastInsertRowid as number;
+  const id = result.lastInsertRowid as number;
+
+  // Compute and store the embedding. We await this so the memory is
+  // immediately searchable by vec similarity — otherwise a quick
+  // remember/recall round-trip could miss. ~200ms cost on a hot model.
+  //
+  // If embedding fails (model not loaded, transformers.js error), we
+  // log and continue. The memory is still in FTS5, so recall still
+  // works via keyword search.
+  //
+  // Note: sqlite-vec's vec0 virtual table requires rowids bound as
+  // BigInt — binding a JS number gives "Only integers are allowed for
+  // primary key values on memories_vec" because better-sqlite3's default
+  // number binding hits a sqlite-vec type check.
+  if (vecAvailable) {
+    try {
+      const vec = await embed(content);
+      if (vec) {
+        db.prepare(
+          "INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)"
+        ).run(BigInt(id), Buffer.from(vec.buffer));
+      }
+    } catch (err) {
+      log.warn(
+        { id, err: err instanceof Error ? err.message : String(err) },
+        "Failed to compute embedding for new memory; FTS5-only for this row"
+      );
+    }
+  }
+
+  return id;
+}
+
+/**
+ * Backfill embeddings for any memories that don't have one yet. Called
+ * once from the daemon startup path. Cheap for a small DB (a few
+ * hundred memories takes under a minute), no-op for a fully-populated
+ * one. Writes are transactional per row so a crash mid-backfill just
+ * picks up where it left off next start.
+ */
+export async function backfillEmbeddings(): Promise<{ backfilled: number }> {
+  if (!vecAvailable) return { backfilled: 0 };
+
+  // Find memories with no corresponding vec row
+  const missing = db
+    .prepare(
+      `
+    SELECT m.id, m.content
+    FROM memories m
+    LEFT JOIN memories_vec v ON v.rowid = m.id
+    WHERE v.rowid IS NULL
+  `
+    )
+    .all() as { id: number; content: string }[];
+
+  if (missing.length === 0) return { backfilled: 0 };
+
+  log.info({ count: missing.length }, "Backfilling embeddings for existing memories");
+  const start = Date.now();
+
+  const insert = db.prepare("INSERT INTO memories_vec(rowid, embedding) VALUES (?, ?)");
+
+  let success = 0;
+  for (const m of missing) {
+    try {
+      const vec = await embed(m.content);
+      if (vec) {
+        // BigInt rowid — see note in remember() for why this cast matters
+        insert.run(BigInt(m.id), Buffer.from(vec.buffer));
+        success++;
+      }
+    } catch (err) {
+      log.warn(
+        { id: m.id, err: err instanceof Error ? err.message : String(err) },
+        "Backfill embed failed for memory; skipping"
+      );
+    }
+  }
+
+  log.info(
+    { backfilled: success, total: missing.length, elapsed_ms: Date.now() - start },
+    "Backfill complete"
+  );
+  return { backfilled: success };
 }
 
 // Common English stopwords and recall-shaped conversational filler. The
@@ -289,42 +440,162 @@ function sanitizeFts5Query(query: string): string {
   return terms.join(" OR ");
 }
 
+// Number of results pulled from each search layer (FTS5 and vec) before
+// fusion. Picking more here gives the RRF merge more signal at the cost
+// of a slightly larger sort. 20 is plenty for a personal DB.
+const CANDIDATE_POOL_SIZE = 20;
+
+// RRF constant from the literature (Cormack et al.). Higher = less
+// sensitive to rank position, more uniform weighting.
+const RRF_K = 60;
+
+/**
+ * Recall memories matching `query`, using a hybrid of:
+ * 1. FTS5 keyword search (BM25 ranked, matches exact words/phrases)
+ * 2. sqlite-vec cosine similarity (semantic match, finds ideas expressed
+ *    in different words)
+ *
+ * Results are fused via Reciprocal Rank Fusion so both layers contribute
+ * without needing to normalize their very different score scales. Recency
+ * and access count are applied as secondary tiebreakers via the existing
+ * weighted formula.
+ *
+ * If sqlite-vec isn't available (extension load failed) or the embedding
+ * model isn't ready, falls back to FTS5-only — exactly the pre-Evening-5
+ * behavior, so recall degrades gracefully instead of erroring.
+ */
 export async function recall(
   query: string,
   project?: string,
   limit = 10
 ): Promise<Memory[]> {
+  // FTS5 layer — sanitized, OR-joined, stopword-filtered from Evening 4
   const ftsQuery = sanitizeFts5Query(query);
-  if (!ftsQuery) return []; // No searchable terms
 
+  const ftsHits = ftsQuery ? fts5Search(ftsQuery, project) : [];
+
+  // Vec layer — compute query embedding, search by cosine similarity
+  let vecHits: Memory[] = [];
+  if (vecAvailable) {
+    try {
+      const queryVec = await embed(query);
+      if (queryVec) {
+        vecHits = vecSearch(queryVec, project);
+      }
+    } catch (err) {
+      log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Vec search failed; continuing with FTS5-only results"
+      );
+    }
+  }
+
+  // If neither layer produced results, nothing to return
+  if (ftsHits.length === 0 && vecHits.length === 0) return [];
+
+  // Reciprocal Rank Fusion — for each memory, add up 1/(k+rank) from
+  // each layer it appears in. Memories matched by both layers get a
+  // strictly higher score than memories matched by just one.
+  const fused = new Map<number, { memory: Memory; score: number }>();
+
+  ftsHits.forEach((m, i) => {
+    fused.set(m.id, { memory: m, score: 1 / (RRF_K + i) });
+  });
+
+  vecHits.forEach((m, i) => {
+    const existing = fused.get(m.id);
+    const vecScore = 1 / (RRF_K + i);
+    if (existing) {
+      existing.score += vecScore;
+    } else {
+      fused.set(m.id, { memory: m, score: vecScore });
+    }
+  });
+
+  // Apply recency + access count as secondary factors to the fused
+  // score. Keeps the Evening 4 ranking intuition while letting RRF do
+  // the heavy lifting for relevance.
+  const now = Date.now();
+  const rescored = Array.from(fused.values()).map(({ memory, score }) => {
+    const ageDays =
+      (now - new Date(memory.created_at.replace(" ", "T") + "Z").getTime()) /
+      86_400_000;
+    const recencyBoost = 1.0 / (1 + ageDays) * 0.01; // tiny — just a tiebreaker
+    const accessBoost = memory.access_count * 0.0005;
+    return {
+      memory,
+      finalScore: score + recencyBoost + accessBoost,
+    };
+  });
+
+  const top = rescored
+    .sort((a, b) => b.finalScore - a.finalScore)
+    .slice(0, limit)
+    .map((r) => r.memory);
+
+  // Update access stats for everything we returned
+  const updateStmt = db.prepare(
+    "UPDATE memories SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?"
+  );
+  for (const m of top) {
+    updateStmt.run(m.id);
+  }
+
+  return top;
+}
+
+function fts5Search(ftsQuery: string, project?: string): Memory[] {
   try {
-    const results = db
+    return db
       .prepare(
         `
-      SELECT m.*, rank
+      SELECT m.*
       FROM memories_fts fts
       JOIN memories m ON m.id = fts.rowid
       WHERE memories_fts MATCH ?
       ${project ? "AND m.project = ?" : ""}
-      ORDER BY rank * 0.6
-             + (1.0 / (1 + julianday('now') - julianday(m.created_at))) * 0.2
-             + (m.access_count * 0.01) * 0.2
+      ORDER BY rank
       LIMIT ?
     `
       )
-      .all(...(project ? [ftsQuery, project, limit] : [ftsQuery, limit])) as (Memory & { rank: number })[];
-
-    // Update access stats
-    const updateStmt = db.prepare(
-      "UPDATE memories SET last_accessed = CURRENT_TIMESTAMP, access_count = access_count + 1 WHERE id = ?"
-    );
-    for (const r of results) {
-      updateStmt.run(r.id);
-    }
-
-    return results;
+      .all(
+        ...(project
+          ? [ftsQuery, project, CANDIDATE_POOL_SIZE]
+          : [ftsQuery, CANDIDATE_POOL_SIZE])
+      ) as Memory[];
   } catch {
-    // FTS5 query can fail on empty tables or edge cases — return empty
+    // FTS5 can fail on malformed queries or empty tables — return nothing
+    return [];
+  }
+}
+
+function vecSearch(queryVec: Float32Array, project?: string): Memory[] {
+  try {
+    // sqlite-vec MATCH requires a subquery pattern with a k limit in the
+    // WHERE clause. The join gets us back to the canonical row data.
+    const rows = db
+      .prepare(
+        `
+      SELECT m.*, vec_distance_L2(v.embedding, ?) as distance
+      FROM memories_vec v
+      JOIN memories m ON m.id = v.rowid
+      WHERE v.embedding MATCH ?
+        AND k = ?
+      ${project ? "AND m.project = ?" : ""}
+      ORDER BY distance
+    `
+      )
+      .all(
+        ...(project
+          ? [Buffer.from(queryVec.buffer), Buffer.from(queryVec.buffer), CANDIDATE_POOL_SIZE, project]
+          : [Buffer.from(queryVec.buffer), Buffer.from(queryVec.buffer), CANDIDATE_POOL_SIZE])
+      ) as Memory[];
+    return rows;
+  } catch (err) {
+    log.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      "vec SQL query failed"
+    );
     return [];
   }
 }

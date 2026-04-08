@@ -7,6 +7,8 @@ import { Vault } from "./vault.js";
 import { loadTools } from "./tools/index.js";
 import { loadSystemdCredentials } from "./init-credentials.js";
 import { childLogger } from "./logger.js";
+import { backfillEmbeddings } from "./memory.js";
+import { warmUpEmbedding } from "./embedding.js";
 
 const log = childLogger("daemon");
 
@@ -71,6 +73,25 @@ async function main(): Promise<void> {
     },
     "Loaded vault secrets"
   );
+
+  // Warm up the embedding model and backfill any memories missing a
+  // vector. This happens in the background so gateway/heartbeat start
+  // without waiting — the first embed() call blocks on the same promise
+  // so the model is guaranteed ready before any real memory op.
+  void (async () => {
+    try {
+      await warmUpEmbedding();
+      const result = await backfillEmbeddings();
+      if (result.backfilled > 0) {
+        log.info({ backfilled: result.backfilled }, "Embedding backfill complete");
+      }
+    } catch (err) {
+      log.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "Embedding warmup/backfill failed — recall will fall back to FTS5-only"
+      );
+    }
+  })();
 
   // Start gateway (Discord, webhooks, TUI, Signal)
   const gateway = new Gateway(config, persona, vault);
