@@ -1,13 +1,36 @@
-// src/heartbeat.ts — Cron scheduler (~40 lines per spec, extended with HEARTBEAT.md parsing)
-// HEARTBEAT.md is the single source of truth. No hardcoded crons.
+// src/heartbeat.ts — Cron scheduler backed by pi-ai structured output + croner.
+//
+// Evening 3 of the pi-ai migration. What changed:
+//
+// - parseSchedule() now uses pi-agent-core's Agent class with a single
+//   "submit_schedule" tool whose TypeBox schema forces the model to return
+//   entries matching an exact shape. Replaces the old freeform-JSON-in-text
+//   approach that had two failure modes:
+//     1. `no JSON array found` when the model wrapped output in prose
+//     2. Silent hallucination of phantom entries from explanatory prose
+//        (the "system monitoring" entry that fired every minute on TH50)
+//
+// - node-cron → croner. Same pattern strings, better DST handling, TS-native
+//   types, smaller install.
+//
+// Public API (start, loadSchedule, listEntries, runNow) is unchanged —
+// callers in index.ts and cli.ts don't need to change.
 
 import fs from "fs";
 import path from "path";
-import cron from "node-cron";
+import { Cron } from "croner";
+import { Agent, type AgentTool } from "@mariozechner/pi-agent-core";
+import {
+  Type,
+  getModel,
+  type Api,
+  type KnownProvider,
+  type Model,
+  type Static,
+} from "@mariozechner/pi-ai";
 import { think, type Turn } from "./agent.js";
 import { MAME_HOME, type PersonaConfig, type MameConfig } from "./config.js";
-import type Anthropic from "@anthropic-ai/sdk";
-import { chatCompletion } from "./model-router.js";
+import { parseModelString } from "./model-router.js";
 
 interface HeartbeatEntry {
   cron: string;
@@ -15,11 +38,134 @@ interface HeartbeatEntry {
   project: string | null;
 }
 
+// Schema for structured output — the schedule parser's model is forced to
+// call submit_schedule with an array matching this shape. Validation is
+// handled by pi-agent-core via TypeBox + AJV.
+const ScheduleEntrySchema = Type.Object({
+  cron: Type.String({
+    description:
+      "Standard 5-field cron expression (minute hour day-of-month month day-of-week). Examples: '30 7 * * *' for 7:30 AM daily, '*/15 * * * *' for every 15 minutes.",
+  }),
+  prompt: Type.String({
+    description:
+      "The task description the agent should run at this time. Combine related bullet points from the schedule document into one coherent prompt.",
+  }),
+  project: Type.Union([Type.String(), Type.Null()], {
+    description:
+      "A specific project name if the schedule explicitly scopes this task to one, otherwise null.",
+  }),
+});
+
+const ScheduleSchema = Type.Object({
+  entries: Type.Array(ScheduleEntrySchema, {
+    description:
+      "The list of scheduled tasks extracted from the document. Include ONLY tasks that have an explicit schedule (time of day, interval, or cron spec). Skip anything that's explanatory prose or a future-feature note.",
+  }),
+});
+
+type ScheduleSchemaType = Static<typeof ScheduleSchema>;
+
+// --------------------------------------------------------------------------
+// Testable parser core — accepts a pre-resolved pi-ai Model so offline tests
+// can inject a faux-registered model without going through pi-ai's static
+// getModel() catalog. The HeartbeatScheduler method below is a thin wrapper
+// that handles model-string resolution via the persona config.
+// --------------------------------------------------------------------------
+export async function parseScheduleWithModel(
+  piModel: Model<Api>,
+  markdown: string
+): Promise<HeartbeatEntry[]> {
+  let captured: HeartbeatEntry[] | null = null;
+
+  const submitTool: AgentTool<typeof ScheduleSchema> = {
+    name: "submit_schedule",
+    label: "submit_schedule",
+    description:
+      "Submit the parsed schedule entries extracted from the document. Call this exactly once with all valid schedule entries you found. If the document contains no scheduled tasks, call it with an empty entries array.",
+    parameters: ScheduleSchema,
+    execute: async (_toolCallId, params: ScheduleSchemaType) => {
+      captured = params.entries.map((e) => ({
+        cron: e.cron,
+        prompt: e.prompt,
+        // AJV coerces Type.Union([String, Null]) nulls to "" in some
+        // provider paths; treat empty strings as null so downstream code
+        // sees the same "no project scope" sentinel regardless of model.
+        project: e.project && e.project.length > 0 ? e.project : null,
+      }));
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Captured ${params.entries.length} schedule entries.`,
+          },
+        ],
+        details: params,
+      };
+    },
+  };
+
+  const systemPrompt = `You are a schedule parser. Your only job is to read a natural-language schedule document and extract the scheduled tasks into a structured list.
+
+You MUST call the submit_schedule tool exactly once with all entries you found. Do not return any other text.
+
+RULES:
+- ONLY include tasks that have an explicit schedule: a time of day ("every morning at 7:30"), an interval ("every 15 minutes"), or a cron spec.
+- DO NOT hallucinate entries from explanatory prose, future-feature descriptions, or general discussion.
+- DO NOT add entries for "system monitoring" or "health checks" unless they have an explicit schedule.
+- If a section describes a feature but gives no schedule, SKIP it.
+- Combine related bullet points under the same schedule into one coherent prompt string.
+
+Common pattern translations:
+- "every morning at 7:30" → "30 7 * * *"
+- "every evening at 18:30" → "30 18 * * *"
+- "every day at 9 AM" → "0 9 * * *"
+- "every 15 minutes" → "*/15 * * * *"
+- "every hour" → "0 * * * *"
+- "weekdays at 8 AM" → "0 8 * * 1-5"`;
+
+  const agent = new Agent({
+    initialState: {
+      systemPrompt,
+      model: piModel,
+      tools: [submitTool as AgentTool<any>],
+      thinkingLevel: "off",
+      messages: [],
+    },
+  });
+
+  try {
+    await agent.prompt(
+      `Parse this schedule document and call submit_schedule with the extracted entries:\n\n${markdown}`
+    );
+  } catch (err) {
+    console.error(
+      `[heartbeat] Schedule parser threw: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return [];
+  }
+
+  if (agent.state.errorMessage) {
+    console.error(`[heartbeat] Schedule parser error: ${agent.state.errorMessage}`);
+    return [];
+  }
+
+  if (captured === null) {
+    console.error(
+      `[heartbeat] Schedule parser did not call submit_schedule. ` +
+        `The model returned text instead of invoking the tool. No entries loaded.`
+    );
+    return [];
+  }
+
+  return captured;
+}
+
 export class HeartbeatScheduler {
-  private jobs: cron.ScheduledTask[] = [];
+  private jobs: Cron[] = [];
   private config: MameConfig;
   private persona: PersonaConfig;
   private notify: (project: string | undefined, message: string) => Promise<void>;
+  private fileWatcher?: fs.FSWatcher;
 
   constructor(
     config: MameConfig,
@@ -42,7 +188,7 @@ export class HeartbeatScheduler {
     await this.loadSchedule();
 
     // Reload when HEARTBEAT.md changes
-    fs.watch(heartbeatPath, async (eventType) => {
+    this.fileWatcher = fs.watch(heartbeatPath, async (eventType) => {
       if (eventType === "change") {
         console.log("[heartbeat] HEARTBEAT.md changed, reloading schedule...");
         await this.loadSchedule();
@@ -50,8 +196,16 @@ export class HeartbeatScheduler {
     });
   }
 
+  stop(): void {
+    for (const job of this.jobs) {
+      job.stop();
+    }
+    this.jobs = [];
+    this.fileWatcher?.close();
+  }
+
   private async loadSchedule(): Promise<void> {
-    // Clear existing jobs
+    // Clear existing jobs before reloading
     for (const job of this.jobs) {
       job.stop();
     }
@@ -60,91 +214,75 @@ export class HeartbeatScheduler {
     const heartbeatPath = path.join(MAME_HOME, "HEARTBEAT.md");
     const raw = fs.readFileSync(heartbeatPath, "utf-8");
 
-    // Use a cheap model to parse natural language → structured schedule
     const entries = await this.parseSchedule(raw);
-
     const timezone = this.config.timezone || "Asia/Tokyo";
 
     for (const entry of entries) {
-      if (!cron.validate(entry.cron)) {
-        console.error(`[heartbeat] Invalid cron expression: ${entry.cron} — skipping`);
-        continue;
+      try {
+        // croner validates the pattern in its constructor — throws on bad
+        // input, which the catch below converts to a skip-with-warning.
+        const job = new Cron(
+          entry.cron,
+          { timezone },
+          async () => {
+            console.log(`[heartbeat] Running: ${entry.prompt.slice(0, 50)}...`);
+
+            const turn: Turn = {
+              message: entry.prompt,
+              channel: "heartbeat",
+              project: entry.project || undefined,
+              personaId: this.persona.name,
+              soulFile: this.persona.soul,
+              model: this.persona.models.heartbeat || this.persona.models.default,
+              tools: this.persona.tools,
+            };
+
+            const reply = await think(turn);
+
+            // Exact-match suppression only — if the model replies with
+            // ALL_CLEAR as its entire response, treat the check as healthy.
+            // Any response containing ALL_CLEAR as a substring still gets
+            // delivered (a daily brief mentioning "everything's clear" is
+            // still a daily brief).
+            const trimmed = reply.trim();
+            if (trimmed === "ALL_CLEAR" || trimmed === "ALL_CLEAR.") {
+              console.log(`[heartbeat] Suppressed (ALL_CLEAR): ${entry.prompt.slice(0, 50)}...`);
+              return;
+            }
+
+            await this.notify(entry.project || undefined, `💓 ${reply}`);
+          }
+        );
+
+        this.jobs.push(job);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[heartbeat] Invalid cron expression '${entry.cron}' — skipping: ${msg}`);
       }
-
-      const job = cron.schedule(entry.cron, async () => {
-        console.log(`[heartbeat] Running: ${entry.prompt.slice(0, 50)}...`);
-
-        const turn: Turn = {
-          message: entry.prompt,
-          channel: "heartbeat",
-          project: entry.project || undefined,
-          personaId: this.persona.name,
-          soulFile: this.persona.soul,
-          model: this.persona.models.heartbeat || this.persona.models.default,
-          tools: this.persona.tools,
-        };
-
-        const reply = await think(turn);
-
-        // Only suppress on EXACT "ALL_CLEAR" reply (trimmed). If the model
-        // includes ALL_CLEAR within a larger response (e.g. a daily brief
-        // that mentions everything is fine), we still deliver it.
-        const trimmed = reply.trim();
-        if (trimmed === "ALL_CLEAR" || trimmed === "ALL_CLEAR.") {
-          console.log(`[heartbeat] Suppressed (ALL_CLEAR): ${entry.prompt.slice(0, 50)}...`);
-          return;
-        }
-
-        await this.notify(entry.project || undefined, `💓 ${reply}`);
-      }, { timezone });
-
-      this.jobs.push(job);
     }
 
     console.log(`[heartbeat] Loaded ${this.jobs.length} scheduled checks`);
   }
 
   private async parseSchedule(markdown: string): Promise<HeartbeatEntry[]> {
+    const modelStr = this.persona.models.heartbeat || this.persona.models.default;
+    const route = parseModelString(modelStr);
+
+    let piModel;
     try {
-      const model = this.persona.models.heartbeat || this.persona.models.default;
-
-      const response = await chatCompletion(
-        model,
-        "You are a schedule parser. Convert natural language schedules into cron expressions.",
-        [{
-          role: "user",
-          content: `Parse this heartbeat schedule into JSON.
-Return ONLY a valid JSON array of objects with these fields:
-- cron: standard 5-field cron expression
-- prompt: what to check (combine related items into one prompt)
-- project: project name if specified, or null
-
-Important: Use standard cron syntax. "Every 30 minutes" = "*/30 * * * *". "Every morning at 9:00" = "0 9 * * *".
-
-Schedule to parse:
-${markdown}`,
-        }],
-        [], // no tools needed for parsing
-        2000
+      piModel = getModel(route.backend as KnownProvider as any, route.modelId as any);
+    } catch (err) {
+      console.error(
+        `[heartbeat] Model ${modelStr} lookup failed: ${err instanceof Error ? err.message : String(err)}`
       );
-
-      const text = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("");
-
-      // Extract JSON from response (may be wrapped in markdown code blocks)
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        console.error("[heartbeat] Failed to parse schedule — no JSON array found in response");
-        return [];
-      }
-
-      return JSON.parse(jsonMatch[0]) as HeartbeatEntry[];
-    } catch (error) {
-      console.error(`[heartbeat] Schedule parse error: ${error}`);
       return [];
     }
+    if (!piModel) {
+      console.error(`[heartbeat] Model ${modelStr} not registered in pi-ai catalog`);
+      return [];
+    }
+
+    return parseScheduleWithModel(piModel, markdown);
   }
 
   // List the parsed schedule entries (for CLI inspection)
@@ -155,7 +293,7 @@ ${markdown}`,
     return this.parseSchedule(raw);
   }
 
-  // Run all scheduled entries immediately (for manual testing)
+  // Run all scheduled entries immediately (for manual testing via CLI)
   async runNow(): Promise<string> {
     const entries = await this.listEntries();
     if (entries.length === 0) {
@@ -184,7 +322,6 @@ ${markdown}`,
         continue;
       }
 
-      // Deliver via notify callback
       await this.notify(entry.project || undefined, `💓 ${reply}`);
       results.push(`✓ [${entry.cron}] Delivered`);
     }
