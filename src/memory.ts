@@ -289,12 +289,73 @@ function relativeTime(from: Date, now: Date): string {
   return `${Math.round(abs / (365 * 86400))} years ${suffix}`;
 }
 
+// ---------------------------------------------------------------------------
+// Secret detection — defensive guard to prevent storing API keys, tokens,
+// and similar credentials in the memory DB.
+//
+// Context: during Evening 5 testing we discovered that Mame had been
+// happily storing a Brave Search API key as a plaintext memory for three
+// days after the user pasted it into chat. Memories are surfaced into the
+// system prompt on every recall, which means a leaked secret in memory
+// gets re-sent to the model on every subsequent turn that triggers recall
+// on related keywords. Once, too many times.
+//
+// The SOUL rule tells Mame not to store secrets. This guard enforces it
+// at the code level so a bad turn can't bypass the rule. The patterns
+// below are deliberately conservative — false positives are much cheaper
+// than false negatives here. If someone's memory content gets flagged,
+// they can rephrase or route it through a different tool.
+// ---------------------------------------------------------------------------
+
+const SECRET_PATTERNS: Array<{ name: string; regex: RegExp }> = [
+  { name: "openai/anthropic-style sk-", regex: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
+  { name: "brave-search", regex: /\bBSA[A-Za-z0-9_-]{20,}\b/ },
+  { name: "slack-bot", regex: /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/ },
+  { name: "github-pat", regex: /\bgh[pousr]_[A-Za-z0-9]{30,}\b/ },
+  { name: "google-api", regex: /\bAIza[A-Za-z0-9_-]{30,}\b/ },
+  { name: "aws-access-key", regex: /\bAKIA[A-Z0-9]{16}\b/ },
+  { name: "jwt-bearer", regex: /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b/ },
+  { name: "64-char-hex (master-key shape)", regex: /\b[a-f0-9]{64}\b/ },
+  { name: "base64-blob >= 40 chars", regex: /[A-Za-z0-9+/]{40,}={0,2}/ },
+];
+
+function detectSecret(content: string): { matched: false } | { matched: true; pattern: string } {
+  for (const { name, regex } of SECRET_PATTERNS) {
+    if (regex.test(content)) {
+      return { matched: true, pattern: name };
+    }
+  }
+  return { matched: false };
+}
+
 export async function remember(
   content: string,
   project?: string,
   category?: string,
   importance?: number
 ): Promise<number> {
+  // Defensive guard: never store anything that looks like a secret.
+  // Throws so the memory tool returns a clear error to the model, which
+  // will then (per the SOUL rule) tell the user to put it in the vault
+  // and suggest they rotate the key since it's now in chat history.
+  const secretCheck = detectSecret(content);
+  if (secretCheck.matched) {
+    log.warn(
+      {
+        pattern: secretCheck.pattern,
+        preview: content.slice(0, 40) + (content.length > 40 ? "..." : ""),
+      },
+      "Refused to store memory — content matches a known secret pattern"
+    );
+    throw new Error(
+      `This content looks like a secret (matched pattern: ${secretCheck.pattern}). ` +
+        `Secrets belong in the vault, not in memory. Memories are surfaced to the model ` +
+        `on every recall, which would leak the secret to every future model call. ` +
+        `Use the vault instead (mame secrets set) and rotate the key if it just came ` +
+        `from chat history.`
+    );
+  }
+
   const result = db.prepare(
     "INSERT INTO memories (content, project, category, importance) VALUES (?, ?, ?, ?)"
   ).run(content, project || null, category || "general", importance || 0.5);
