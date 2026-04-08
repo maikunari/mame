@@ -1,19 +1,44 @@
 // src/prompt.ts — System prompt assembly (~30 lines per spec)
 
-import type { Memory } from "./memory.js";
+import { formatMemoryTimestamp, type Memory } from "./memory.js";
 
 export interface PromptContext {
   soul: string;
   memories: Memory[];
   projectContext?: string;
+  /**
+   * IANA timezone for formatting memory timestamps. Comes from
+   * config.yml's `timezone` field. Defaults to Asia/Tokyo if omitted —
+   * memories still format correctly, just in JST.
+   */
+  timezone?: string;
 }
 
-export function buildSystemPrompt({ soul, memories, projectContext }: PromptContext): string {
+export function buildSystemPrompt({
+  soul,
+  memories,
+  projectContext,
+  timezone,
+}: PromptContext): string {
+  const tz = timezone || "Asia/Tokyo";
+
+  // Prefix each memory with its stored-at timestamp in the user's local
+  // timezone with an ISO offset, a short TZ label, and a relative-time
+  // suffix. Lets the model reason about recency ("this was 3 weeks ago")
+  // and cross-timezone context ("this was 9 AM JST / 8 PM EST the day
+  // before") without guessing what the timestamp refers to.
+  const memorySection = memories.length
+    ? `## Relevant Memories
+${memories
+  .map((m) => `- [${formatMemoryTimestamp(m.created_at, tz)}] ${m.content}`)
+  .join("\n")}`
+    : "";
+
   return `${soul}
 
 ${projectContext ? `## Current Project\n${projectContext}` : ""}
 
-${memories.length ? `## Relevant Memories\n${memories.map((m) => `- ${m.content}`).join("\n")}` : ""}
+${memorySection}
 
 ## Tools Available
 You have tools for: web search, web fetch, browser (with persistent logins),

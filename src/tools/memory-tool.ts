@@ -1,7 +1,8 @@
 // src/tools/memory-tool.ts — Memory tool interface (~20 lines per spec)
 // Named memory-tool.ts to avoid conflict with ../memory.ts
 
-import { remember, recall, forget } from "../memory.js";
+import { remember, recall, forget, formatMemoryTimestamp } from "../memory.js";
+import { loadConfig } from "../config.js";
 import { registerTool, type ToolContext } from "./index.js";
 
 registerTool({
@@ -48,7 +49,23 @@ registerTool({
       case "recall": {
         if (!content) return { error: "content/query required for recall" };
         const results = await recall(content, project);
-        return { memories: results.map((m) => ({ id: m.id, content: m.content, category: m.category, project: m.project })) };
+        // Surface timestamps so the model can reason about WHEN memories
+        // were stored — critical for multi-timezone users and for
+        // distinguishing "said yesterday" from "said last year".
+        const timezone = loadConfig().timezone || "Asia/Tokyo";
+        return {
+          memories: results.map((m) => ({
+            id: m.id,
+            content: m.content,
+            category: m.category,
+            project: m.project,
+            stored_at: formatMemoryTimestamp(m.created_at, timezone),
+            last_accessed: m.last_accessed
+              ? formatMemoryTimestamp(m.last_accessed, timezone)
+              : null,
+            access_count: m.access_count,
+          })),
+        };
       }
 
       case "forget": {
