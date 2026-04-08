@@ -111,7 +111,7 @@ Timestamps are surfaced to the model in full timezone-explicit form:
 
 The model reasons about recency, timezone offsets for scheduling, and cross-timezone math (JST ↔ EST) from that anchor instead of guessing.
 
-## MCP orchestration (Evening 6)
+## MCP orchestration 
 
 Mame runs an embedded MCP HTTP server on `localhost:3848` that exposes a single tool:
 
