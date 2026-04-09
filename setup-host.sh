@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup script for TH50 — writes correct config files to ~/.mame/
+# Setup script — writes baseline config files to ~/.mame/
 
 MAME_HOME="${MAME_HOME:-$HOME/.mame}"
 
@@ -14,17 +14,17 @@ projects: {}
 discord:
   enabled: true
   channelMap:
-    "1489994227168313435": null    # #mame — global context
-  defaultChannel: "1489994227168313435"
+    "YOUR_CHANNEL_ID_HERE": null    # global context
+  defaultChannel: "YOUR_CHANNEL_ID_HERE"
 
 webhook:
   port: 3847
 
-timezone: Asia/Tokyo
+timezone: UTC
 EOF
 
-# personas/mike.yml
-cat > "$MAME_HOME/personas/mike.yml" << 'EOF'
+# personas/default.yml
+cat > "$MAME_HOME/personas/default.yml" << 'EOF'
 name: "Mame"
 soul: "SOUL-Mame.md"
 language: "en"
@@ -43,13 +43,13 @@ tools:
 
 discord:
   channelMap:
-    "1489994227168313435": null
+    "YOUR_CHANNEL_ID_HERE": null
 EOF
 
 # SOUL-Mame.md (only if it doesn't already exist or is empty)
 if [ ! -s "$MAME_HOME/SOUL-Mame.md" ]; then
 cat > "$MAME_HOME/SOUL-Mame.md" << 'EOF'
-You are Mame, Mike's persistent AI agent.
+You are Mame, a persistent AI agent.
 
 You help with daily tasks, research, and study. You communicate
 primarily through Discord. You are casual, smart, and efficient.
@@ -63,17 +63,19 @@ fi
 if [ ! -s "$MAME_HOME/HEARTBEAT.md" ]; then
 cat > "$MAME_HOME/HEARTBEAT.md" << 'EOF'
 Check the following and respond ALL_CLEAR if nothing needs attention.
-Only alert me if something is genuinely wrong or needs action.
+Only alert if something is genuinely wrong or needs action.
 
 ## Every morning at 9:00
-- Check if there's anything I should know about today
+- Check if there's anything worth knowing about today
 EOF
 fi
 
-# Clean up the incorrectly placed file
-rm -f "$MAME_HOME/Mame.yml"
-
 echo "✅ Config files written to $MAME_HOME"
+echo ""
+echo "Next steps:"
+echo "  1. Edit $MAME_HOME/config.yml and replace YOUR_CHANNEL_ID_HERE with a real Discord channel ID"
+echo "  2. Edit $MAME_HOME/personas/default.yml the same way"
+echo "  3. Add your API keys with: mame secrets set global OPENROUTER_API_KEY  (or GEMINI_API_KEY, etc.)"
 echo ""
 echo "Files:"
 ls -la "$MAME_HOME/"

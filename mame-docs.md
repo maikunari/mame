@@ -295,10 +295,10 @@ agentmail:
 Each persona defines which model and tools that user gets.
 
 ```yaml
-# ~/.mame/personas/mike.yml
+# ~/.mame/personas/default.yml
 
 name: "Mame"
-soul: "SOUL-mike.md"
+soul: "SOUL-Mame.md"
 language: "en"
 
 models:
@@ -353,10 +353,10 @@ line:
 The agent's personality. Written in the user's language. Edit directly or ask the agent to adjust.
 
 ```markdown
-# Example: ~/.mame/SOUL-mike.md
+# Example: ~/.mame/SOUL-Mame.md
 
-You are Mame, Mike's persistent AI agent running on his TH50 server.
-You help manage his software projects, monitor his infrastructure,
+You are Mame, a persistent AI agent running on a Linux host.
+You help manage software projects, monitor infrastructure,
 research topics, and coordinate coding work via Claude Code.
 
 You communicate primarily through Discord. You are direct, technical,

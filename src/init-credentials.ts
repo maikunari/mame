@@ -14,7 +14,7 @@
 // If $CREDENTIALS_DIRECTORY is not set, this is a no-op and Mame falls
 // through to the existing vault loader. That keeps the local dev path
 // working on macOS where systemd doesn't exist, and gives us a clean
-// rollback path while we soak the systemd switch on TH50.
+// rollback path while we soak the systemd switch in production.
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";

@@ -8,7 +8,7 @@
 
 ## What Mame Is
 
-Mame is not an AI agent framework. It's not a platform. It's a personal daemon that sits on your TH50, listens for messages, thinks about them using Claude (or Gemma 4 for lightweight instances), and dispatches work to the right place. It has seven capabilities:
+Mame is not an AI agent framework. It's not a platform. It's a personal daemon that sits on a Linux host, listens for messages, thinks about them using Claude (or Gemma 4 for lightweight instances), and dispatches work to the right place. It has seven capabilities:
 
 1. **Self-improving memory** — SQLite + FTS5 (upgradeable to Antakarana later)
 2. **Web browsing with persistent logins** — agent-browser with saved profiles and encrypted credentials
@@ -20,7 +20,7 @@ Mame is not an AI agent framework. It's not a platform. It's a personal daemon t
 
 Everything else is someone else's problem.
 
-**Multi-persona capable.** Same engine, different SOUL.md and toolset per user. Mike gets Claude Code + GitHub + full toolkit. Non-coders get browser + calendar + shopping + memory. Swap the config, swap the personality.
+**Multi-persona capable.** Same engine, different SOUL.md and toolset per user. Developers get Claude Code + GitHub + full toolkit. Non-coders get browser + calendar + shopping + memory. Swap the config, swap the personality.
 
 ---
 
@@ -155,12 +155,12 @@ Where `SOUL` is a markdown file you edit directly:
 ```markdown
 # ~/.mame/SOUL.md
 
-You are Mame, a persistent AI agent running on Mike's TH50 server.
-You help manage his software projects, monitor his infrastructure,
+You are Mame, a persistent AI agent running on a Linux host.
+You help manage software projects, monitor infrastructure,
 research topics, and coordinate coding work via Claude Code.
 
 You communicate primarily through Discord. You are direct, technical,
-and don't waste words. You know Mike's projects, preferences, and workflows
+and don't waste words. You know your person's projects, preferences, and workflows
 because you remember them.
 
 You are proactive during heartbeats but not annoying — only notify
@@ -273,13 +273,13 @@ You: "Set up my Amazon Japan account"
 Mame: "I'll create a browser profile for Amazon.
          What's your email and password?"
 
-You: "mike@example.com / mypassword123"
+You: "user@example.com / mypassword123"
 
-Mame: → vault.set('amazon-jp', 'email', 'mike@example.com')
+Mame: → vault.set('amazon-jp', 'email', 'user@example.com')
         → vault.set('amazon-jp', 'password', 'mypassword123')
         → browser open amazon.co.jp --profile amazon-jp
         → browser snapshot → finds login form
-        → browser type @email-field mike@example.com
+        → browser type @email-field user@example.com
         → browser type @password-field mypassword123
         → browser click @submit
         → detects 2FA prompt
@@ -733,12 +733,12 @@ Every new tool follows the same pattern. Every modification is a git commit. If 
 
 ## Multi-Persona Instances
 
-Same engine, different configs. One TH50, multiple agents.
+Same engine, different configs. One host, multiple agents.
 
 ```yaml
-# ~/.mame/personas/mike.yml
+# ~/.mame/personas/default.yml
 name: "Mame"
-soul: "SOUL-mike.md"
+soul: "SOUL-Mame.md"
 models:
   default: claude-sonnet-4-6-20250514
   heartbeat: google/gemini-3.1-flash-lite-preview
@@ -800,9 +800,9 @@ You never make purchases without explicit confirmation.
 module.exports = {
   apps: [
     {
-      name: "mame-mike",
+      name: "mame-default",
       script: "./dist/index.js",
-      args: "--persona mike",
+      args: "--persona default",
       env: { MAME_HOME: "~/.mame" },
     },
     {
@@ -815,7 +815,7 @@ module.exports = {
 };
 ```
 
-Two agents, one machine, separate Discord channels, separate memories, separate tool permissions. Yuki's instance runs on Gemini Flash Lite for pennies. Mike's runs on Claude for power. Both use the same core code.
+Two agents, one machine, separate Discord channels, separate memories, separate tool permissions. The family-assistant instance runs on Gemini Flash Lite for pennies. The developer instance runs on Claude for power. Both use the same core code.
 
 ---
 
@@ -1236,7 +1236,7 @@ projects:
     path: ~/Projects/mame
     github: yourusername/mame
 
-# Discord (Mike — developer workflow)
+# Discord (developer workflow)
 discord:
   enabled: true
   channelMap:
@@ -1246,7 +1246,7 @@ discord:
     "123456792": null            # general — no project context
   defaultChannel: "123456792"
 
-# LINE (Yuki — personal assistant)
+# LINE (personal assistant)
 line:
   enabled: true
   userMap:
@@ -1302,13 +1302,13 @@ mame/
 └── ecosystem.config.cjs  # pm2 config (auto-discovers personas)
 
 ~/.mame/
-├── SOUL-mike.md           # Mike's agent personality
-├── SOUL-yuki.md           # Yuki's agent personality
+├── SOUL-Mame.md           # Primary agent personality
+├── SOUL-alt.md            # Alternate persona personality
 ├── HEARTBEAT.md           # Heartbeat checklist
 ├── config.yml             # Runtime config
 ├── personas/
-│   ├── mike.yml           # Mike's tool + channel config
-│   └── yuki.yml           # Yuki's tool + channel config
+│   ├── default.yml        # Primary tool + channel config
+│   └── alt.yml            # Alternate persona config
 ├── .vault/                # Encrypted secrets
 │   ├── global.enc
 │   ├── kantan-finance.enc
@@ -1362,7 +1362,7 @@ Nine npm dependencies. Plus two global CLI tools:
 
 ```bash
 npm install -g agent-browser    # Browser automation with persistent profiles
-# Claude Code already installed on TH50
+# Claude Code already installed on the host
 ```
 
 For lightweight personas, use Google AI (Gemini Flash Lite) via the `google/` model prefix.
@@ -1441,7 +1441,7 @@ English
 
 > Great. What should I call you?
 
-Mike
+Alex
 
 > And what would you like to name me?
 
@@ -1589,7 +1589,7 @@ npx mame init --persona     # Runs onboarding for a new user
 
 ## The Dream Workflows
 
-**Workflow 1: New Relic Alert → Fix → Deploy (Mike)**
+**Workflow 1: New Relic Alert → Fix → Deploy (developer persona)**
 
 ```
 1. New Relic webhook hits :3847/webhook/newrelic
@@ -1645,7 +1645,7 @@ npx mame init --persona     # Runs onboarding for a new user
 
 - **~2,500 lines** of application code, three model backends (Anthropic, OpenRouter, Google AI)
 - **9 npm dependencies + 1 global CLI tool**
-- **One process per persona** on your existing TH50
+- **One process per persona** on your existing Linux host
 - **No new infrastructure** — uses Claude API, GitHub API, AgentMail API, Discord bot, agent-browser
 - **Claude Code does all the hard work** — you never rebuild file ops, git, testing
 - **Memory is SQLite + FTS5 with auto-sync triggers** — no vector DB, no embedding API, no external dependencies

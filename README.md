@@ -134,7 +134,7 @@ Claude Code's MCP client (configured via `~/.claude.json`) sees Mame's server, i
 
 When the user replies in Discord, the gateway's `messageCreate` handler checks `hasPendingQuestion()`, routes the message to `provideAnswer()` instead of `think()`, and sends a one-line ack (`📨 Forwarded your answer to the running task`). The Promise resolves, Claude Code's tool call returns, and the subprocess resumes from where it paused.
 
-Result: **Mame becomes an orchestrator**. A Discord dispatch like *"Mike, use claude_code to update all the product descriptions for the spring collection"* can turn into Claude Code pausing 5 minutes in to ask *"12 of 47 are last year's leftover stock — include them or skip?"*, Mame delivers the question to you, you reply, Claude Code resumes, and the final result lands back in Discord.
+Result: **Mame becomes an orchestrator**. A Discord dispatch like *"use claude_code to update all the product descriptions for the spring collection"* can turn into Claude Code pausing 5 minutes in to ask *"12 of 47 are last year's leftover stock — include them or skip?"*, Mame delivers the question to you, you reply, Claude Code resumes, and the final result lands back in Discord.
 
 ### Setup for Claude Code integration
 
@@ -213,7 +213,7 @@ All state lives in `~/.mame/`:
 Config validation is enforced at startup via zod schemas — a malformed `config.yml` or `persona.yml` fails loudly with path-scoped errors instead of crashing deep in the daemon:
 
 ```
-Invalid config.yml at /home/jerry/.mame/config.yml:
+Invalid config.yml at ~/.mame/config.yml:
   - webhook.port: Expected number, received string
 
 Fix the fields above and restart.
@@ -224,7 +224,7 @@ Fix the fields above and restart.
 Same engine, different configs. One machine, multiple agents with distinct personalities, tools, languages, and messaging channels.
 
 ```yaml
-# ~/.mame/personas/mike.yml
+# ~/.mame/personas/default.yml
 name: "Mame"
 soul: "SOUL-Mame.md"
 language: "en"
@@ -324,11 +324,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=jerry
-Group=jerry
-Environment=MAME_PERSONA=mike
-WorkingDirectory=/home/jerry/Projects/mame
-ExecStart=/usr/bin/node /home/jerry/Projects/mame/dist/index.js
+User=mame
+Group=mame
+Environment=MAME_PERSONA=default
+WorkingDirectory=/opt/mame
+ExecStart=/usr/bin/node /opt/mame/dist/index.js
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -340,7 +340,7 @@ LoadCredentialEncrypted=MAME_MASTER_KEY:/etc/credstore.encrypted/MAME_MASTER_KEY
 NoNewPrivileges=true
 ProtectSystem=full
 ProtectHome=read-only
-ReadWritePaths=/home/jerry/.mame /home/jerry/Projects/mame
+ReadWritePaths=/home/mame/.mame /opt/mame
 
 [Install]
 WantedBy=multi-user.target

@@ -54,7 +54,7 @@ export class Vault {
    * True iff the vault can be constructed in this process — i.e. iff
    * MAME_MASTER_KEY is set in the environment. Lets callers gracefully
    * skip the vault when secrets are already in env (e.g. via the
-   * systemd-creds loader on TH50 post-cutover) instead of crashing the
+   * systemd-creds loader post-cutover) instead of crashing the
    * whole CLI on a missing master key.
    */
   static isAvailable(): boolean {

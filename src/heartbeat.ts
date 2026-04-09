@@ -8,7 +8,7 @@
 //   approach that had two failure modes:
 //     1. `no JSON array found` when the model wrapped output in prose
 //     2. Silent hallucination of phantom entries from explanatory prose
-//        (the "system monitoring" entry that fired every minute on TH50)
+//        (e.g. a "system monitoring" entry that fired every minute in prod)
 //
 // - node-cron → croner. Same pattern strings, better DST handling, TS-native
 //   types, smaller install.

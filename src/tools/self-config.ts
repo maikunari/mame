@@ -42,7 +42,7 @@ registerTool({
         },
         path: {
           type: "string",
-          description: "File or directory path relative to ~/.mame/ (e.g. 'SOUL-Mame.md', 'HEARTBEAT.md', 'config.yml', 'personas/mike.yml', 'personas/')",
+          description: "File or directory path relative to ~/.mame/ (e.g. 'SOUL-Mame.md', 'HEARTBEAT.md', 'config.yml', 'personas/default.yml', 'personas/')",
         },
         content: {
           type: "string",

@@ -143,8 +143,8 @@ export interface Memory {
 // - Relative time: the model's favorite form for reasoning about recency
 //
 // Addressing a real pain point: models struggle repeatedly with implicit
-// timezone reasoning, especially across multi-timezone work (mike in JST
-// doing business with people in EST). Making the timezone explicit at the
+// timezone reasoning, especially across multi-timezone work (e.g. the
+// operator in JST doing business with people in EST). Making the timezone explicit at the
 // display layer — while keeping storage in UTC — gives the model a solid
 // anchor to reason from instead of having to guess what "2026-04-08
 // 03:12:44" refers to.
