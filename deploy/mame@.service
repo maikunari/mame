@@ -1,0 +1,29 @@
+[Unit]
+Description=Mame personal agent (%i persona)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jerry
+Group=jerry
+Environment=MAME_PERSONA=%i
+Environment=MAME_CLAUDE_BIN=/home/jerry/.npm-global/bin/claude
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin:/home/jerry/.npm-global/bin
+WorkingDirectory=/home/jerry/Projects/mame
+ExecStart=/usr/bin/node /home/jerry/Projects/mame/dist/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Master key for the vault — encrypted at rest via systemd-creds
+LoadCredentialEncrypted=MAME_MASTER_KEY:/etc/credstore.encrypted/MAME_MASTER_KEY
+
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/jerry/.mame /home/jerry/Projects
+
+[Install]
+WantedBy=multi-user.target

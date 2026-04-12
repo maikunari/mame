@@ -1,0 +1,19 @@
+name: "Mame-Mini"
+soul: "SOUL-Mame.md"
+language: "en"
+
+models:
+  default: openrouter/minimax/minimax-m2.7
+  heartbeat: google/gemini-3.1-flash-lite-preview
+
+tools:
+  - memory
+  - web_search
+  - web_fetch
+  - write_report
+  - self_config
+  - bash
+
+discord:
+  channelMap:
+    "1492845525874114673": null
