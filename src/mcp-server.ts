@@ -261,9 +261,14 @@ export async function startMcpServer(options: McpServerOptions): Promise<McpServ
       });
     });
 
-    httpServer.on("error", (err) => {
-      log.error({ err: err.message, port }, "MCP server failed to start");
-      reject(err);
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        log.warn({ port }, `MCP port ${port} already in use — skipping (another persona likely owns it)`);
+        resolve({ port, close: async () => {} });
+      } else {
+        log.error({ err: err.message, port }, "MCP server failed to start");
+        reject(err);
+      }
     });
   });
 }

@@ -297,6 +297,12 @@ export class Gateway {
     const host = process.env.MAME_BIND_HOST || "0.0.0.0";
     this.webhookServer.listen(port, host, () => {
       log.info({ host, port }, `Webhook server listening on ${host}:${port}`);
+    }).on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        log.warn({ host, port }, `Webhook port ${port} already in use — skipping (another persona likely owns it)`);
+      } else {
+        throw err;
+      }
     });
   }
 
