@@ -339,3 +339,9 @@ What is the best option?  Does this let me run a separate model in a separate d
 ---
 
 sure, here is the discord channel ID 1492845525874114673
+
+---
+
+jerry@sp-studio:~/Projects/mame$ sudo cp ~/Projects/mame/deploy/mame@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+cp: cannot stat '/home/jerry/Projects/mame/deploy/mame@.service': No such file or directory
