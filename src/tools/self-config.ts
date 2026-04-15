@@ -3,8 +3,34 @@
 
 import fs from "fs";
 import path from "path";
+import { parse as parseYaml } from "yaml";
 import { MAME_HOME } from "../config.js";
 import { registerTool, type ToolContext } from "./index.js";
+
+/**
+ * Validate YAML/JSON content before writing to prevent the agent from
+ * breaking her own config with malformed output.
+ */
+function validateStructuredContent(
+  relativePath: string,
+  content: string
+): string | null {
+  if (relativePath.endsWith(".yml") || relativePath.endsWith(".yaml")) {
+    try {
+      parseYaml(content);
+    } catch (err) {
+      return `Invalid YAML — refusing to write. Parse error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  if (relativePath.endsWith(".json")) {
+    try {
+      JSON.parse(content);
+    } catch (err) {
+      return `Invalid JSON — refusing to write. Parse error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  return null; // valid
+}
 
 // Only allow access within ~/.mame/ — no escaping
 function resolveSafePath(filename: string): string | null {
@@ -110,6 +136,8 @@ registerTool({
         if (isReadOnly(relativePath)) {
           return { error: `Cannot write to ${relativePath} — use the appropriate tool (vault for secrets)` };
         }
+        const writeErr = validateStructuredContent(relativePath, content);
+        if (writeErr) return { error: writeErr };
         fs.mkdirSync(path.dirname(fullPath), { recursive: true });
         fs.writeFileSync(fullPath, content);
         return { written: true, path: relativePath, size: content.length };
@@ -124,6 +152,13 @@ registerTool({
         }
         if (!fs.existsSync(fullPath)) {
           return { error: `File not found: ${relativePath}. Use 'write' to create new files.` };
+        }
+        // For structured files, validate the final result (existing + appended)
+        if (relativePath.endsWith(".yml") || relativePath.endsWith(".yaml") || relativePath.endsWith(".json")) {
+          const existing = fs.readFileSync(fullPath, "utf-8");
+          const merged = existing + content;
+          const appendErr = validateStructuredContent(relativePath, merged);
+          if (appendErr) return { error: appendErr };
         }
         fs.appendFileSync(fullPath, content);
         return { appended: true, path: relativePath, bytesAdded: content.length };
