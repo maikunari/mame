@@ -34,6 +34,8 @@ export class Gateway {
   private config: MameConfig;
   private persona: PersonaConfig;
   private vault: Vault;
+  // Channels currently in "think deep" sticky mode (complex model)
+  private complexModeChannels = new Set<string>();
 
   constructor(config: MameConfig, persona: PersonaConfig, vault: Vault) {
     this.config = config;
@@ -141,14 +143,39 @@ export class Gateway {
       }, 8000);
 
       try {
-        // Detect "think deep:" prefix to escalate to the complex model for this turn
-        let modelOverride: string | undefined;
-        const complexPrefix = /^think\s+deep\s*:\s*/i;
-        if (complexPrefix.test(messageText) && this.persona.models.complex) {
-          messageText = messageText.replace(complexPrefix, "");
-          modelOverride = this.persona.models.complex;
-          log.info({ model: modelOverride }, "Escalating to complex model for this turn");
+        // Model mode switching: "think deep" / "think normal"
+        // Sticky per-channel — stays on complex until explicitly switched back
+        const thinkDeepToggle = /^think\s+deep\s*$/i;
+        const thinkDeepInline = /^think\s+deep\s*:\s*/i;
+        const thinkNormal = /^think\s+(normal|fast|default)\s*$/i;
+
+        if (thinkNormal.test(messageText.trim())) {
+          this.complexModeChannels.delete(msg.channelId);
+          log.info({ channel: msg.channelId }, "Switched back to default model");
+          await msg.channel.send("⚡ Back to default model.");
+          clearInterval(typingInterval);
+          return;
         }
+
+        if (thinkDeepToggle.test(messageText.trim()) && this.persona.models.complex) {
+          this.complexModeChannels.add(msg.channelId);
+          log.info({ channel: msg.channelId, model: this.persona.models.complex }, "Switched to complex model (sticky)");
+          await msg.channel.send(`🧠 Switched to complex model. All messages in this channel use \`${this.persona.models.complex}\` until you say "think normal".`);
+          clearInterval(typingInterval);
+          return;
+        }
+
+        // "think deep: <message>" — one-shot, also activates sticky mode
+        if (thinkDeepInline.test(messageText) && this.persona.models.complex) {
+          messageText = messageText.replace(thinkDeepInline, "");
+          this.complexModeChannels.add(msg.channelId);
+          log.info({ channel: msg.channelId, model: this.persona.models.complex }, "Switched to complex model (sticky, inline)");
+        }
+
+        // Resolve model: sticky complex mode > default
+        const modelOverride = this.complexModeChannels.has(msg.channelId)
+          ? this.persona.models.complex
+          : undefined;
 
         const turn = this.buildTurn(messageText, "discord", project, modelOverride);
         if (imageUrls.length > 0) turn.imageUrls = imageUrls;
