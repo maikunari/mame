@@ -141,7 +141,16 @@ export class Gateway {
       }, 8000);
 
       try {
-        const turn = this.buildTurn(messageText, "discord", project);
+        // Detect "think deep:" prefix to escalate to the complex model for this turn
+        let modelOverride: string | undefined;
+        const complexPrefix = /^think\s+deep\s*:\s*/i;
+        if (complexPrefix.test(messageText) && this.persona.models.complex) {
+          messageText = messageText.replace(complexPrefix, "");
+          modelOverride = this.persona.models.complex;
+          log.info({ model: modelOverride }, "Escalating to complex model for this turn");
+        }
+
+        const turn = this.buildTurn(messageText, "discord", project, modelOverride);
         if (imageUrls.length > 0) turn.imageUrls = imageUrls;
         const reply = await think(turn);
 
@@ -485,7 +494,8 @@ export class Gateway {
   private buildTurn(
     message: string,
     channel: Turn["channel"],
-    project?: string
+    project?: string,
+    modelOverride?: string
   ): Turn {
     return {
       message,
@@ -493,7 +503,7 @@ export class Gateway {
       project: project || undefined,
       personaId: this.persona.name,
       soulFile: this.persona.soul,
-      model: this.persona.models.default,
+      model: modelOverride || this.persona.models.default,
       tools: this.persona.tools,
     };
   }
