@@ -98,6 +98,42 @@ export class Gateway {
         .filter((a) => a.contentType?.startsWith("image/"))
         .map((a) => a.url);
 
+      // Download text file attachments and inline their content
+      const textAttachments = msg.attachments.filter(
+        (a) =>
+          a.contentType?.startsWith("text/") ||
+          a.name?.endsWith(".txt") ||
+          a.name?.endsWith(".md") ||
+          a.name?.endsWith(".csv") ||
+          a.name?.endsWith(".json") ||
+          a.name?.endsWith(".yml") ||
+          a.name?.endsWith(".yaml") ||
+          a.name?.endsWith(".xml") ||
+          a.name?.endsWith(".log") ||
+          a.name?.endsWith(".ts") ||
+          a.name?.endsWith(".js") ||
+          a.name?.endsWith(".py") ||
+          a.name?.endsWith(".sh")
+      );
+
+      let messageText = msg.content;
+      for (const att of textAttachments.values()) {
+        try {
+          const res = await fetch(att.url);
+          if (res.ok) {
+            const text = await res.text();
+            // Cap at 50KB to avoid flooding context
+            const truncated =
+              text.length > 50_000
+                ? text.slice(0, 50_000) + "\n... (truncated, file was " + text.length + " chars)"
+                : text;
+            messageText += `\n\n--- Attached file: ${att.name} ---\n${truncated}\n--- End of ${att.name} ---`;
+          }
+        } catch (err) {
+          log.warn({ file: att.name, err: String(err) }, "Failed to download text attachment");
+        }
+      }
+
       // Show typing indicator while thinking (refreshes every 8s, Discord typing lasts 10s)
       await msg.channel.sendTyping();
       const typingInterval = setInterval(() => {
@@ -105,7 +141,7 @@ export class Gateway {
       }, 8000);
 
       try {
-        const turn = this.buildTurn(msg.content, "discord", project);
+        const turn = this.buildTurn(messageText, "discord", project);
         if (imageUrls.length > 0) turn.imageUrls = imageUrls;
         const reply = await think(turn);
 
