@@ -63,6 +63,14 @@ function setHistory(turn: Turn, messages: Message[]): void {
   conversationBuffer.set(key, trimmed);
 }
 
+/**
+ * Returns a snapshot of all active conversation buffers.
+ * Used by the graceful shutdown handler to persist context to memory.
+ */
+export function getActiveConversations(): Map<string, Message[]> {
+  return conversationBuffer;
+}
+
 async function loadProjectContext(project: string): Promise<string> {
   // For now, return a minimal context string from config.
   return `Project: ${project}`;

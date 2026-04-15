@@ -8,8 +8,9 @@ import { loadTools } from "./tools/index.js";
 import { loadSystemdCredentials } from "./init-credentials.js";
 import { childLogger } from "./logger.js";
 import { startMcpServer } from "./mcp-server.js";
-import { backfillEmbeddings } from "./memory.js";
+import { backfillEmbeddings, remember } from "./memory.js";
 import { warmUpEmbedding } from "./embedding.js";
+import { getActiveConversations } from "./agent.js";
 
 const log = childLogger("daemon");
 
@@ -137,6 +138,69 @@ async function main(): Promise<void> {
   await heartbeat.start();
 
   log.info({ persona: personaName }, "🫘 Mame is awake");
+
+  // Graceful shutdown: persist active conversation context to memory
+  // so Mame remembers what she was doing after a restart.
+  const shutdown = async (signal: string) => {
+    log.info({ signal }, "Shutdown signal received — saving conversation context");
+
+    const conversations = getActiveConversations();
+    let saved = 0;
+
+    for (const [key, messages] of conversations) {
+      // Skip empty or trivial buffers
+      if (messages.length < 2) continue;
+
+      // Extract the last few user/assistant exchanges as a summary
+      const recent = messages.slice(-6); // Last ~3 exchanges
+      const lines: string[] = [];
+      for (const msg of recent) {
+        const role = msg.role === "user" ? "User" : "Mame";
+        // Extract text content from the message
+        let text: string;
+        if (typeof msg.content === "string") {
+          text = msg.content.slice(0, 500);
+        } else if (Array.isArray(msg.content)) {
+          text = msg.content
+            .filter((c: any) => c.type === "text" && typeof c.text === "string")
+            .map((c: any) => c.text as string)
+            .join(" ")
+            .slice(0, 500);
+        } else {
+          continue;
+        }
+        if (text.trim()) lines.push(`${role}: ${text}`);
+      }
+
+      if (lines.length === 0) continue;
+
+      const [, channel, project] = key.split(":");
+      const summary =
+        `[Auto-saved conversation context before restart — ${channel} channel]\n` +
+        lines.join("\n");
+
+      try {
+        await remember(
+          summary,
+          project !== "global" ? project : undefined,
+          "conversation-context",
+          3 // low importance — ephemeral context, not a key fact
+        );
+        saved++;
+      } catch (err) {
+        log.warn({ key, err: String(err) }, "Failed to save conversation context");
+      }
+    }
+
+    if (saved > 0) {
+      log.info({ saved }, `Saved ${saved} conversation context(s) to memory`);
+    }
+
+    process.exit(0);
+  };
+
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
 main().catch((error) => {
