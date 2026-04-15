@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.5.3",
+  "checkpoint_id": "d864bec3cc87",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "src/gateway.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/d8/64bec3cc87/0/metadata.json",
+      "transcript": "/d8/64bec3cc87/0/full.jsonl",
+      "content_hash": "/d8/64bec3cc87/0/content_hash.txt",
+      "prompt": "/d8/64bec3cc87/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 5352,
+    "cache_creation_tokens": 10762845,
+    "cache_read_tokens": 450927274,
+    "output_tokens": 765077,
+    "api_call_count": 1336
+  }
+}
