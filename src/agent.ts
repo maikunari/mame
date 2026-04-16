@@ -100,7 +100,14 @@ export async function think(turn: Turn): Promise<string> {
     // 3. Load soul and assemble system prompt
     const soul = loadSoul(turn.soulFile);
     const timezone = loadConfig().timezone;
-    const systemPrompt = buildSystemPrompt({ soul, memories, projectContext, timezone });
+    const systemPrompt = buildSystemPrompt({
+      soul,
+      memories,
+      projectContext,
+      timezone,
+      modelId: turn.model,
+      personaName: turn.personaId,
+    });
 
     // 4. Resolve the model via pi-ai's catalog
     const route = parseModelString(turn.model);

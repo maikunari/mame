@@ -12,6 +12,17 @@ export interface PromptContext {
    * memories still format correctly, just in JST.
    */
   timezone?: string;
+  /**
+   * The model ID this agent is running on (e.g. "openrouter/minimax/minimax-m2.7").
+   * Injected into the prompt so the agent can answer "what model are you?"
+   * accurately instead of hallucinating from stale memory.
+   */
+  modelId?: string;
+  /**
+   * The persona name (e.g. "Mame", "Mame-Mini"). Lets the agent ground
+   * its identity in the current config rather than conversational drift.
+   */
+  personaName?: string;
 }
 
 export function buildSystemPrompt({
@@ -19,6 +30,8 @@ export function buildSystemPrompt({
   memories,
   projectContext,
   timezone,
+  modelId,
+  personaName,
 }: PromptContext): string {
   const tz = timezone || "Asia/Tokyo";
 
@@ -44,8 +57,13 @@ ${memories
   .join("\n")}`
     : "";
 
-  return `${soul}
+  const identitySection = modelId || personaName
+    ? `## Your Identity${personaName ? `\nYou are **${personaName}**.` : ""}${modelId ? `\nYou are running on model: **${modelId}**.` : ""}
+When asked what model you're using or who you are, use this section — not anything you might recall from memory. Memories about past model configurations are historical context, not current truth.`
+    : "";
 
+  return `${soul}
+${identitySection ? "\n" + identitySection + "\n" : ""}
 ## Current Context
 It is currently ${currentTime}.
 When users ask about "today", "yesterday", "last week", or reference times, use this as your anchor — not your training data cutoff. When scheduling or discussing times with people in other timezones, explicitly state both local and remote times to avoid ambiguity.
