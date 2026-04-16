@@ -120,16 +120,19 @@ export async function think(turn: Turn): Promise<string> {
     //    a function call turn") because unrelated tool_call/tool_result
     //    sequences ended up adjacent in the transcript.
     //
-    //    thinkingLevel: "off" matches the previous behavior — Evening 4+ can
-    //    expose this per-persona if wanted.
+    //    thinkingLevel: respect the model's reasoning flag. Models like
+    //    MiniMax M2.7 and DeepSeek R1 require reasoning to be enabled;
+    //    sending "off" to them returns a 400. Non-reasoning models ignore
+    //    the "medium" level and behave normally.
     const useBuffer = turn.channel !== "heartbeat";
     const history = useBuffer ? getHistory(turn) : [];
+    const thinkingLevel = piModel.reasoning ? "medium" : "off";
     const agent = new Agent({
       initialState: {
         systemPrompt,
         model: piModel,
         tools,
-        thinkingLevel: "off",
+        thinkingLevel,
         messages: history,
       },
     });
