@@ -945,3 +945,23 @@ Got it, you're right it worked and saved!
 ---
 
 yup both ae ain
+
+---
+
+Can we discuss this book mark thing ?  Now what I did wiht openclaw was said access my bookmarks, find the latest ones since you last checked and write me a report based on anything useful and actionable to my work, ai research etc  - that was jsut something I added into a heartbeat pulse (or a cron i forget) - now I saw a tweet the other day I can't find where a guy got claude to check hacker news every day and make him a website/magazine with articles showing all the stuff that interests him  - I basically wanna do something like that, cuz I never really go back to look at the bookmarks but there is a lotta gold in there.
+
+---
+
+I actually want to go straight to option A - reading markdown isn't visually appealling.  As for questions 1 - just X, 2 - A, 3 - daily magazine ( I save a lot of bookmarks!) 4 - claude code new features, new claude code skills (gstack, etc) design skills, ai assisted seo, money making idea, trading - basically  i have a ton of boomark folder probably just make sections based on those folders?  then it's smart enough to only choose bookmarks that were entered since the last digest - if nothing new it can go back and mine old ones, 5 - it'll be both, probably phone more but laptop too -  it should look awesome, not AI slop  - something like this
+
+---
+
+1. dAIly digest (get it d AI ly ;) 2. folders work, I'm pretty sure as openclaw was able to sort by folder, 3. 10 ish per day - but here is a ton in there already - maybe add an Old Gold section with 5 older bookmarks too 4 - answerd above I think 5 - dailydigest.sonicpixel.io -  question, do you think sonnet could do the build?  we probably wanna use impeccable web design skills (in claude code skills) with Opus for the design
+
+---
+
+Question - why don't we just build this right into mame as a feature, rather than having mame build it through claude code - like we just built it here and make it part of mame
+
+---
+
+I like it looks good.   so what I wanna do is starte a new session with sonnet, can you save your todos and write a hand off document for me so I can get sonnet started off properly?
