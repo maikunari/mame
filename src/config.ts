@@ -77,6 +77,13 @@ const PersonaConfigSchema = z.object({
   language: z.string().optional(),
   models: ModelsConfigSchema,
   tools: z.array(z.string()).default([]),
+  /**
+   * Default thinking level for reasoning-capable models. "off" = no
+   * reasoning tokens (fast, cheap). "low"/"medium"/"high" = progressively
+   * more internal deliberation (slower, better quality).
+   * Ignored for models without reasoning support.
+   */
+  thinkingLevel: z.enum(["off", "low", "medium", "high"]).default("off"),
   discord: z
     .object({ channelMap: z.record(z.string(), z.string().nullable()) })
     .optional(),

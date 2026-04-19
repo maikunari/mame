@@ -36,6 +36,8 @@ export class Gateway {
   private vault: Vault;
   // Channels currently in "think deep" sticky mode (complex model)
   private complexModeChannels = new Set<string>();
+  // Per-channel thinking level override (persists until changed or restart)
+  private thinkingOverrides = new Map<string, "off" | "low" | "medium" | "high">();
 
   constructor(config: MameConfig, persona: PersonaConfig, vault: Vault) {
     this.config = config;
@@ -172,12 +174,30 @@ export class Gateway {
           log.info({ channel: msg.channelId, model: this.persona.models.complex }, "Switched to complex model (sticky, inline)");
         }
 
+        // Reasoning toggle: "reasoning on/off/low/medium/high"
+        const reasoningMatch = messageText.trim().match(/^reasoning\s+(on|off|low|medium|high)\s*$/i);
+        if (reasoningMatch) {
+          const level = reasoningMatch[1].toLowerCase();
+          if (level === "off") {
+            this.thinkingOverrides.set(msg.channelId, "off");
+            await msg.channel.send("🚫 Reasoning disabled. Faster & cheaper responses, but may be less thoughtful.");
+          } else {
+            const mapped = (level === "on" ? "medium" : level) as "low" | "medium" | "high";
+            this.thinkingOverrides.set(msg.channelId, mapped);
+            await msg.channel.send(`🧠 Reasoning set to **${mapped}**. Will think before responding.`);
+          }
+          log.info({ channel: msg.channelId, level }, "Reasoning level changed");
+          clearInterval(typingInterval);
+          return;
+        }
+
         // Resolve model: sticky complex mode > default
         const modelOverride = this.complexModeChannels.has(msg.channelId)
           ? this.persona.models.complex
           : undefined;
+        const thinkingOverride = this.thinkingOverrides.get(msg.channelId);
 
-        const turn = this.buildTurn(messageText, "discord", project, modelOverride);
+        const turn = this.buildTurn(messageText, "discord", project, modelOverride, thinkingOverride);
         if (imageUrls.length > 0) turn.imageUrls = imageUrls;
         const reply = await think(turn);
 
@@ -522,7 +542,8 @@ export class Gateway {
     message: string,
     channel: Turn["channel"],
     project?: string,
-    modelOverride?: string
+    modelOverride?: string,
+    thinkingOverride?: Turn["thinkingLevel"]
   ): Turn {
     return {
       message,
@@ -532,6 +553,7 @@ export class Gateway {
       soulFile: this.persona.soul,
       model: modelOverride || this.persona.models.default,
       tools: this.persona.tools,
+      thinkingLevel: thinkingOverride || this.persona.thinkingLevel,
     };
   }
 }

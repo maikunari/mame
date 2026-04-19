@@ -39,6 +39,7 @@ export interface Turn {
   soulFile: string;
   model: string;
   tools: string[];
+  thinkingLevel?: "off" | "low" | "medium" | "high";
 }
 
 // Conversation buffer keyed by personaId:channel:project — last ~20 pi-ai
@@ -133,7 +134,17 @@ export async function think(turn: Turn): Promise<string> {
     //    the "medium" level and behave normally.
     const useBuffer = turn.channel !== "heartbeat";
     const history = useBuffer ? getHistory(turn) : [];
-    const thinkingLevel = piModel.reasoning ? "medium" : "off";
+    // Resolve thinking level: turn override > persona default > "medium" if
+    // reasoning is mandatory for this model > "off". Non-reasoning models
+    // silently ignore whatever we pass.
+    let thinkingLevel: "off" | "low" | "medium" | "high";
+    if (turn.thinkingLevel) {
+      thinkingLevel = turn.thinkingLevel;
+    } else if (piModel.reasoning) {
+      thinkingLevel = "medium";
+    } else {
+      thinkingLevel = "off";
+    }
     const agent = new Agent({
       initialState: {
         systemPrompt,
