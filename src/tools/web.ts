@@ -106,7 +106,7 @@ registerTool({
 
     // If browser failed (not installed, crashed), fall back to plain fetch
     if (result.error && !result.text) {
-      console.log(`[web_fetch] Browser failed for ${url}, trying plain fetch`);
+      console.log(`[web_fetch] Browser failed for ${url}: ${result.error}. Trying plain fetch`);
       try {
         const response = await fetch(url, {
           headers: {
