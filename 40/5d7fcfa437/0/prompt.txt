@@ -1,0 +1,54 @@
+no I don't think we are running pm2, this is how I restart mame : cd ~/Projects/mame
+git pull
+npm run build
+pm2 restart all
+
+---
+
+sorry  i pasted the wrong this : sudo systemctl restart mame@mike
+
+---
+
+ok did it, what next?
+
+---
+
+switching back to Opus here, please review the previous conversation to get caught up
+
+---
+
+jerry@sp-studio:~/Projects/mame$ mame secrets list global
+Command 'mame' not found, but can be installed with:
+sudo snap install mame  # version mame0287, or
+sudo apt  install mame  # version 0.261+dfsg.1-1
+See 'snap info mame' for additional versions.
+
+---
+
+we input and tested these secrets are there yesteday I don't thnk we need to do it again
+
+---
+
+look back and see what we used yesterday
+
+---
+
+any of this help? jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js secrets list global
+unset MAME_MASTER_KEY
+Secrets for global: DISCORD_BOT_TOKEN, BRAVE_SEARCH_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, X_CLIENT_SECRET, X_CLIENT_ID
+[22:56:25.197] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+
+---
+
+do I have to open that url on th50 or mac is ok?  either is fine
+
+---
+
+I'll just do it on TH50 sounds easier
+
+---
+
+yup worked
