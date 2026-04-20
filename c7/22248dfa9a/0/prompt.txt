@@ -1,0 +1,25 @@
+export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine ingest
+node ~/Projects/mame/dist/cli.js magazine stats
+node ~/Projects/mame/dist/cli.js magazine generate
+unset MAME_MASTER_KEY
+
+---
+
+under /personas we should be personas/mike.yml - Error: X API error (404): 
+Magazine stats:
+  Home:                  /home/jerry/.mame/magazine
+  Archive total:         0 bookmarks
+  Archive oldest:        (none)
+  Archive newest:        (none)
+  Last synced bookmark:  (none)
+  Next issue number:     1
+  Resurfaced count:      0
+[12:19:41.013] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+Error: Persona not found: /home/jerry/.mame/personas/default.yml
+[12:19:41.212] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+jerry@sp-studio:~/Projects/mame$ ^C
