@@ -353,7 +353,30 @@ async function main(): Promise<void> {
       const dateFlag = args.indexOf("--date");
       const date = dateFlag >= 0 ? args[dateFlag + 1] : undefined;
       const personaFlag = args.indexOf("--persona");
-      const personaName = personaFlag >= 0 ? args[personaFlag + 1] : "default";
+      let personaName: string;
+      if (personaFlag >= 0) {
+        personaName = args[personaFlag + 1];
+      } else {
+        // Auto-detect: prefer "default", else if exactly one persona file exists use it.
+        const personasDir = path.join(MAME_HOME, "personas");
+        if (fs.existsSync(path.join(personasDir, "default.yml"))) {
+          personaName = "default";
+        } else if (fs.existsSync(personasDir)) {
+          const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
+          if (files.length === 1) {
+            personaName = files[0].replace(".yml", "");
+          } else if (files.length === 0) {
+            console.error(`No personas found in ${personasDir}`);
+            process.exit(1);
+          } else {
+            console.error(`Multiple personas found: ${files.map((f) => f.replace(".yml", "")).join(", ")}\nSpecify one with --persona <name>`);
+            process.exit(1);
+          }
+        } else {
+          console.error(`Personas directory not found: ${personasDir}`);
+          process.exit(1);
+        }
+      }
 
       // Magazine pipeline needs vault secrets (OPENROUTER_API_KEY etc) in env
       if (Vault.isAvailable()) {

@@ -79,21 +79,31 @@ export async function runIngest(date?: string): Promise<IngestResult> {
   const state = loadState();
   const stopAtId = state.lastSyncedBookmarkId;
 
-  // Walk folders + flat stream concurrently
-  const folders = await listFolders(me.id, token);
-  log.info({ folders: folders.map((f) => f.name) }, "found folders");
+  // Folders are a Premium-only X feature. If the endpoint 404s (or any error),
+  // gracefully fall back to flat-stream-only ingest.
+  let folders: XFolder[] = [];
+  try {
+    folders = await listFolders(me.id, token);
+    log.info({ folders: folders.map((f) => f.name) }, "found folders");
+  } catch (err) {
+    log.warn({ err: String(err) }, "folders endpoint failed (Premium feature?) — falling back to flat stream only");
+  }
 
   const collected = new Map<string, FormattedBookmark & { folder: string | null }>();
   const byFolder: Record<string, number> = {};
   let totalScanned = 0;
 
-  // Per-folder walk
+  // Per-folder walk (skipped if folders unavailable)
   for (const folder of folders) {
-    const { count, scanned } = await walkFolder(me.id, token, folder, stopAtId, (b) => {
-      if (!collected.has(b.id)) collected.set(b.id, { ...b, folder: folder.name });
-    });
-    byFolder[folder.name] = count;
-    totalScanned += scanned;
+    try {
+      const { count, scanned } = await walkFolder(me.id, token, folder, stopAtId, (b) => {
+        if (!collected.has(b.id)) collected.set(b.id, { ...b, folder: folder.name });
+      });
+      byFolder[folder.name] = count;
+      totalScanned += scanned;
+    } catch (err) {
+      log.warn({ folder: folder.name, err: String(err) }, "folder walk failed — skipping this folder");
+    }
   }
 
   // Flat stream — captures un-foldered items
