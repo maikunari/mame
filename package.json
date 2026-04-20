@@ -8,7 +8,7 @@
     "mame": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/magazine/template dist/magazine/template",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
@@ -23,6 +23,7 @@
     "@octokit/rest": "^20.0.0",
     "@xenova/transformers": "^2.17.2",
     "better-sqlite3": "^11.0.0",
+    "handlebars": "^4.7.0",
     "croner": "^10.0.1",
     "discord.js": "^14.0.0",
     "express": "^4.18.0",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
+    "@types/handlebars": "^4.1.0",
     "@types/express": "^4.17.0",
     "@types/node": "^22.0.0",
     "pino-pretty": "^13.1.3",

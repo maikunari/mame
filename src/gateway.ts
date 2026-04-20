@@ -3,6 +3,8 @@
 import { Client, GatewayIntentBits, type TextChannel } from "discord.js";
 import { messagingApi, middleware } from "@line/bot-sdk";
 import express from "express";
+import fs from "fs";
+import path from "path";
 import readline from "readline";
 import { think, type Turn } from "./agent.js";
 import { type MameConfig, type PersonaConfig, MAME_HOME } from "./config.js";
@@ -18,6 +20,8 @@ import {
   readPendingAuth,
   clearPendingAuth,
 } from "./x-auth.js";
+import { listRenderedIssues } from "./magazine/render.js";
+import { PUBLIC_DIR } from "./magazine/state.js";
 
 const log = childLogger("gateway");
 
@@ -425,6 +429,62 @@ export class Gateway {
         res.status(500).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ Token exchange failed</h2><p>${String(err)}</p></body></html>`);
       }
     });
+
+    // Magazine — index listing + static HTML files
+    // Index route must be registered before express.static so Express doesn't
+    // look for a missing PUBLIC_DIR/index.html and fall through to 404.
+    this.webhookServer.get("/magazine", (_req, res) => {
+      res.redirect(301, "/magazine/");
+    });
+
+    this.webhookServer.get("/magazine/", (_req, res) => {
+      const issues = listRenderedIssues();
+      if (issues.length === 0) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(
+          `<html><body style="font-family:sans-serif;max-width:50rem;margin:4rem auto;padding:0 1.5rem">` +
+          `<h2>No issues rendered yet</h2>` +
+          `<p>Run <code>mame magazine render</code> to render an issue.</p>` +
+          `</body></html>`
+        );
+        return;
+      }
+      const rows = issues
+        .map(
+          (iss) =>
+            `<tr>` +
+            `<td><a href="/magazine/${iss.date}.html">#${iss.issueNumber ?? "—"}</a></td>` +
+            `<td>${iss.date}</td>` +
+            `<td>${iss.signal ? iss.signal.replace(/&/g, "&amp;").replace(/</g, "&lt;") : "—"}</td>` +
+            `<td style="text-align:right">${iss.savedToday ?? "—"}</td>` +
+            `</tr>`
+        )
+        .join("\n");
+      const html =
+        `<!doctype html><html lang="en"><head>` +
+        `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+        `<title>dAIly digest — issues</title>` +
+        `<style>` +
+        `body{font-family:system-ui,sans-serif;max-width:60rem;margin:3rem auto;padding:0 1.5rem;color:#222;background:#faf8f3}` +
+        `h1{font-size:1.75rem;margin-bottom:0.25rem}` +
+        `p{color:#666;margin-bottom:2rem;font-size:0.9rem}` +
+        `table{width:100%;border-collapse:collapse}` +
+        `th,td{padding:0.55rem 0.75rem;text-align:left;border-bottom:1px solid #e5e0d5;vertical-align:top}` +
+        `th{font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:#999;border-bottom:2px solid #c8bfae}` +
+        `a{color:#7a2222;text-decoration:none}a:hover{text-decoration:underline}` +
+        `tr:hover td{background:#f2ede2}` +
+        `td:nth-child(3){font-style:italic;color:#555;font-size:0.92rem}` +
+        `</style></head><body>` +
+        `<h1>d<span style="color:#7a2222;font-style:italic">AI</span>ly digest</h1>` +
+        `<p>${issues.length} issue${issues.length !== 1 ? "s" : ""} · <a href="/magazine/latest.html">latest →</a></p>` +
+        `<table><thead><tr><th>#</th><th>Date</th><th>Signal</th><th style="text-align:right">Items</th></tr></thead>` +
+        `<tbody>${rows}</tbody></table>` +
+        `</body></html>`;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(html);
+    });
+
+    this.webhookServer.use("/magazine", express.static(PUBLIC_DIR));
 
     this.webhookServer.post("/webhook/:source", async (req, res) => {
       const source = req.params.source;
