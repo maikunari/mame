@@ -433,11 +433,9 @@ export class Gateway {
     // Magazine — index listing + static HTML files
     // Index route must be registered before express.static so Express doesn't
     // look for a missing PUBLIC_DIR/index.html and fall through to 404.
-    this.webhookServer.get("/magazine", (_req, res) => {
-      res.redirect(301, "/magazine/");
-    });
-
-    this.webhookServer.get("/magazine/", (_req, res) => {
+    // Both paths share one handler because Express's default non-strict routing
+    // makes app.get("/magazine") match "/magazine/" too, causing a redirect loop.
+    this.webhookServer.get(["/magazine", "/magazine/"], (_req, res) => {
       const issues = listRenderedIssues();
       if (issues.length === 0) {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
