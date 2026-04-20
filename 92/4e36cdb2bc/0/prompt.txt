@@ -1,0 +1,20 @@
+jerry@sp-studio:~/Projects/mame$ curl http://localhost:3847/magazine/latest.html | head -5
+curl http://localhost:3847/magazine/
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+<!doctype html>    0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+1<html lang="en">
+0<head>
+0<meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+23085  100 23085    0     0  4652k      0 --:--:-- --:--:-- --:--:-- 5635k
+curl: Failed writing body
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>dAIly digest — issues</title><style>body{font-family:system-ui,sans-serif;max-width:60rem;margin:3rem auto;padding:0 1.5rem;color:#222;background:#faf8f3}h1{font-size:1.75rem;margin-bottom:0.25rem}p{color:#666;margin-bottom:2rem;font-size:0.9rem}table{width:100%;border-collapse:collapse}th,td{padding:0.55rem 0.75rem;text-align:left;border-bottom:1px solid #e5e0d5;vertical-align:top}th{font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:#999;border-bottom:2px solid #c8bfae}a{color:#7a2222;text-decoration:none}a:hover{text-decoration:underline}tr:hover td{background:#f2ede2}td:nth-child(3){font-style:italic;color:#555;font-size:0.92rem}</style></head><body><h1>d<span style="color:#7a2222;font-style:italic">AI</span>ly digest</h1><p>1 issue · <a href="/magazine/latest.html">latest →</a></p><table><thead><tr><th>#</th><th>Date</th><th>Signal</th><th style="text-align:right">Items</th></tr></thead><tbody><tr><td><a href="/magazine/2026-04-20.html">#2</a></td><td>2026-04-20</td><td>AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate.</td><td style="text-align:right">99</td></tr></tbody></table></body></html>jerry@sp-studio:~/Projects/mame$
+
+---
+
+'failed writing body' is expected result?
+
+---
+
+Ah got it!  Ok proceed with phase 5
