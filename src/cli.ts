@@ -280,8 +280,50 @@ async function main(): Promise<void> {
         });
         const result = await scheduler.runNow();
         console.log(result);
+      } else if (sub === "magazine") {
+        // Run the magazine pipeline now (ingest → generate → render → notify).
+        // Prints the Discord notification to stdout instead of sending it.
+        let persona: string;
+        if (args.includes("--persona")) {
+          persona = args[args.indexOf("--persona") + 1];
+        } else {
+          const personasDir = path.join(MAME_HOME, "personas");
+          if (fs.existsSync(path.join(personasDir, "mike.yml"))) {
+            persona = "mike";
+          } else if (fs.existsSync(personasDir)) {
+            const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
+            if (files.length === 1) {
+              persona = files[0].replace(".yml", "");
+            } else {
+              console.error("Multiple personas — specify one with --persona <name>");
+              process.exit(1);
+            }
+          } else {
+            console.error("No personas found.");
+            process.exit(1);
+          }
+        }
+
+        const { loadPersona } = await import("./config.js");
+        const config = loadConfig();
+        const personaConfig = loadPersona(persona);
+
+        if (Vault.isAvailable()) {
+          const vault = new Vault();
+          const globalSecrets = await vault.getAll("global");
+          for (const [key, value] of Object.entries(globalSecrets)) {
+            if (!process.env[key]) process.env[key] = value;
+          }
+        }
+
+        const scheduler = new HeartbeatScheduler(config, personaConfig, async (_p, msg) => {
+          console.log("\n" + "=".repeat(60));
+          console.log(msg);
+          console.log("=".repeat(60) + "\n");
+        });
+        await scheduler.runMagazineNow();
       } else {
-        console.log("Usage: mame heartbeat [status|run]");
+        console.log("Usage: mame heartbeat [status|run|magazine]");
       }
       break;
     }
@@ -671,6 +713,7 @@ Usage:
 
   mame heartbeat status          Show heartbeat schedule
   mame heartbeat run             Force immediate heartbeat
+  mame heartbeat magazine        Run magazine pipeline now (ingest→generate→render→notify)
 
   mame memory search [query]     Search memories
   mame memory list               List recent memories

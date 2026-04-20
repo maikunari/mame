@@ -183,20 +183,20 @@ export class HeartbeatScheduler {
   async start(): Promise<void> {
     const heartbeatPath = path.join(MAME_HOME, "HEARTBEAT.md");
 
-    if (!fs.existsSync(heartbeatPath)) {
-      log.info("No HEARTBEAT.md found, skipping scheduler");
-      return;
+    if (fs.existsSync(heartbeatPath)) {
+      await this.loadSchedule();
+      this.fileWatcher = fs.watch(heartbeatPath, async (eventType) => {
+        if (eventType === "change") {
+          log.info("HEARTBEAT.md changed, reloading schedule");
+          await this.loadSchedule();
+        }
+      });
+    } else {
+      log.info("No HEARTBEAT.md found — skipping LLM schedule parse");
     }
 
-    await this.loadSchedule();
-
-    // Reload when HEARTBEAT.md changes
-    this.fileWatcher = fs.watch(heartbeatPath, async (eventType) => {
-      if (eventType === "change") {
-        log.info("HEARTBEAT.md changed, reloading schedule");
-        await this.loadSchedule();
-      }
-    });
+    // Always register the magazine digest job regardless of HEARTBEAT.md.
+    this.startMagazineJob();
   }
 
   stop(): void {
@@ -273,6 +273,63 @@ export class HeartbeatScheduler {
     }
 
     log.info({ count: this.jobs.length }, `Loaded ${this.jobs.length} scheduled checks`);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Magazine daily digest job — direct pipeline, no LLM indirection.
+  // Fires daily at 06:00 in the configured timezone (default Asia/Tokyo).
+  // ---------------------------------------------------------------------------
+
+  private startMagazineJob(): void {
+    const timezone = this.config.timezone || "Asia/Tokyo";
+    const job = new Cron("0 6 * * *", { timezone }, async () => {
+      log.info({ timezone }, "Daily magazine job firing");
+      try {
+        await this.runMagazinePipeline();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error({ err: msg }, "Daily magazine job failed");
+        await this.notify(undefined, `❌ dAIly digest failed: ${msg}`);
+      }
+    });
+    this.jobs.push(job);
+    log.info({ timezone }, "Daily magazine job registered (06:00)");
+  }
+
+  private async runMagazinePipeline(): Promise<void> {
+    const { runIngest } = await import("./magazine/ingest.js");
+    const { generateDailyDigest } = await import("./magazine/digest.js");
+    const { renderIssue } = await import("./magazine/render.js");
+    const { todayISO } = await import("./magazine/state.js");
+
+    const timezone = this.config.timezone || "Asia/Tokyo";
+    const date = todayISO(timezone);
+
+    const ingest = await runIngest(date);
+    log.info({ date, newCount: ingest.newCount, total: ingest.totalScanned }, "Magazine ingest done");
+
+    if (ingest.newCount === 0) {
+      log.info({ date }, "No new bookmarks today — skipping digest + notify");
+      return;
+    }
+
+    const digest = await generateDailyDigest({ date, personaName: this.persona.name });
+    log.info({ date, issueNumber: digest.issue.issueNumber }, "Magazine digest done");
+
+    await renderIssue(date);
+    log.info({ date }, "Magazine render done");
+
+    const url = `https://dailydigest.sonicpixel.io/magazine/${date}.html`;
+    const msg =
+      `📰 **dAIly digest #${digest.issue.issueNumber} is out** — *"${digest.issue.signal}"*\n` +
+      `→ ${url}`;
+    await this.notify(undefined, msg);
+  }
+
+  /** Run the magazine pipeline immediately — for CLI testing and manual triggers. */
+  async runMagazineNow(): Promise<void> {
+    log.info("Running magazine pipeline now (manual trigger)");
+    await this.runMagazinePipeline();
   }
 
   private async parseSchedule(markdown: string): Promise<HeartbeatEntry[]> {
