@@ -222,17 +222,62 @@ function extractText(response: AssistantMessage): string {
   return parts.join("\n").trim();
 }
 
-/** Strip ```json fences and parse. Throws on malformed JSON with a hint. */
+/**
+ * Lenient JSON extractor. In order:
+ *   1. Strip leading/trailing whitespace.
+ *   2. If a ```json…``` (or plain ```…```) fence appears anywhere, extract
+ *      its inner content first.
+ *   3. Trim everything before the first `{` or `[` and after the matching
+ *      closing brace/bracket.
+ *   4. JSON.parse.
+ * Models love to wrap JSON in prose, headers, or "**JSON Output**" preambles.
+ * This recovers from all of those.
+ */
 function parseJsonResponse<T>(raw: string, hint: string): T {
   let s = raw.trim();
-  // Strip leading "```json\n" or "```\n"
-  s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+
+  const fence = s.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+  if (fence) s = fence[1].trim();
+
+  const firstBrace = s.search(/[{[]/);
+  if (firstBrace > 0) s = s.slice(firstBrace);
+  const lastBrace = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+  if (lastBrace > 0 && lastBrace < s.length - 1) s = s.slice(0, lastBrace + 1);
+
   try {
     return JSON.parse(s) as T;
   } catch (err) {
     log.error({ raw, hint }, "LLM returned malformed JSON");
     throw new Error(`Malformed JSON in ${hint}: ${err}`);
   }
+}
+
+/**
+ * Last-ditch parser for the {summary, whyItMatters} pair when the model
+ * decides to emit markdown instead of JSON. Tolerates:
+ *   **summary**: text     **whyItMatters**: text
+ *   **Summary:** text     **Why It Matters:** text
+ *   **SUMMARY**\ntext     **WHY IT MATTERS**\ntext
+ *   ...etc. Returns null if neither field is recoverable.
+ */
+function parseMarkdownSummaryPair(
+  raw: string
+): { summary: string; whyItMatters: string } | null {
+  const sumRe = /\*\*\s*summary\s*:?\s*\*\*\s*:?\s*\n?\s*([\s\S]*?)(?=\n?\s*\*\*\s*why|\n?\s*\*\*\s*whyitmatters|$)/i;
+  const whyRe = /\*\*\s*(?:why\s*it\s*matters?|whyitmatters?)\s*:?\s*\*\*\s*:?\s*\n?\s*([\s\S]*?)$/i;
+
+  const sumMatch = raw.match(sumRe);
+  const whyMatch = raw.match(whyRe);
+  if (!sumMatch && !whyMatch) return null;
+
+  const summary = (sumMatch?.[1] ?? "").trim();
+  const whyItMatters = (whyMatch?.[1] ?? "").trim();
+  if (!summary && !whyItMatters) return null;
+
+  return {
+    summary: summary || "(summary unavailable)",
+    whyItMatters: whyItMatters || "(why-it-matters unavailable)",
+  };
 }
 
 async function llmJson<T>(
@@ -278,11 +323,19 @@ Mike is a builder: he ships AI-augmented developer tools, runs his own infra, ma
 
 Your job: write tight, specific, useful editorial copy for each bookmark. No hype, no marketing fluff, no "in today's fast-paced AI landscape" preambles.
 
-Output STRICT JSON only — no prose around it, no markdown fences. Schema:
+CRITICAL OUTPUT FORMAT — read carefully:
+- Output ONLY a single JSON object. Nothing before it. Nothing after it.
+- Do NOT use markdown bold (**), headers, "Summary:" labels, code fences, or any prose framing.
+- Do NOT explain what you're doing. Just emit the JSON.
+
+Schema:
 {
   "summary": "Two sentences. What is this thing? Be concrete and specific.",
   "whyItMatters": "One sentence. Why should Mike care? Tie it to his work building dev tools, AI-augmented workflows, or running his own systems."
-}`;
+}
+
+Example output (this is the EXACT format — nothing else):
+{"summary":"Open-source CLI that wraps the Anthropic API with built-in prompt caching, streaming, and tool-use helpers. Single binary, no Node deps.","whyItMatters":"Drop-in replacement for the boilerplate Mike already writes around every Anthropic SDK call — saves hours per project."}`;
 
 async function summarizeItems(
   records: IngestRecord[],
@@ -295,17 +348,34 @@ async function summarizeItems(
     SUMMARIZE_CONCURRENCY,
     async ({ r, idx }) => {
       const userPrompt = buildItemPrompt(r);
+      const ctx: Context = {
+        systemPrompt: SUMMARIZE_SYSTEM,
+        messages: [{ role: "user", content: [{ type: "text", text: userPrompt }], timestamp: Date.now() }],
+      };
+      let raw = "";
       try {
-        const json = await llmJson<{ summary: string; whyItMatters: string }>(
-          piModel,
-          SUMMARIZE_SYSTEM,
-          userPrompt,
-          `summarize bookmark ${r.id}`,
-          400
-        );
-        results[idx] = { ...r, summary: json.summary, whyItMatters: json.whyItMatters };
+        const response = await completeSimple(piModel, ctx, { maxTokens: 400 });
+        raw = extractText(response);
+
+        // Try strict JSON first.
+        let parsed: { summary?: string; whyItMatters?: string };
+        try {
+          parsed = parseJsonResponse(raw, `summarize bookmark ${r.id}`);
+        } catch {
+          // Markdown fallback — recover content the model put in **bold** form.
+          const md = parseMarkdownSummaryPair(raw);
+          if (!md) throw new Error("neither JSON nor markdown pair found");
+          log.debug({ id: r.id }, "recovered summary via markdown parser");
+          parsed = md;
+        }
+
+        results[idx] = {
+          ...r,
+          summary: parsed.summary ?? r.linkedTitle ?? r.text.slice(0, 200),
+          whyItMatters: parsed.whyItMatters ?? "(why-it-matters unavailable)",
+        };
       } catch (err) {
-        log.warn({ id: r.id, err: String(err) }, "summarize failed — using fallback");
+        log.warn({ id: r.id, err: String(err), raw: raw.slice(0, 300) }, "summarize failed — using fallback");
         results[idx] = {
           ...r,
           summary: r.linkedTitle ?? r.text.slice(0, 200),
