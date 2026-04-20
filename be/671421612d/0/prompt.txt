@@ -1,0 +1,55 @@
+Read tasks/daily-digest-handoff.md — this is my brief for the dAIly digest feature. We're picking up at Phase 1. Do NOT re-scope, re-design, or re-negotiate the data contract — the decisions there are locked by a prior Opus planning session. Before writing any code, read the existing codebase to understand: the tool registration pattern in src/tools/, the gateway structure in src/gateway.ts, how the vault is used in existing tools, and the pi-ai integration in src/agent.ts. Then start with Phase 1. Ask before adding any npm dependency — the project is lean on deps by design.
+
+That one paragraph gets Sonnet oriented and prevents it from going off on architectural tangents. The doc in the repo handles the rest.
+
+Session summary
+What got built today:
+
+bash tool
+Discord text-attachment support (.txt, .md, .json, etc. auto-inlined)
+YAML/JSON write validation in self_config (can't corrupt her own configs anymore)
+"think deep" / "think normal" sticky model toggle
+"reasoning on/off/low/medium/high" chat toggle
+Graceful shutdown saves conversation to memory on SIGTERM
+System prompt now injects live model + persona name (no more identity drift)
+Port conflict handling for multi-persona
+Mame-Mini persona (planner/PM SOUL, separate from chat-Mame)
+Web fetch sandbox fix (ReadWritePaths for .agent-browser)
+Complete scope for dAIly digest — the ambitious one
+What's staged for next sessions:
+
+Sonnet session: engineering phases of dAIly digest
+Opus + /impeccable session: the magazine template
+Mike: OAuth consent, Cloudflare Tunnel
+Nice arc for one day. Go get the Sonnet session going — the handoff doc should give it everything it needs.
+
+---
+
+Can you walk me through what you want me to do on TH50?
+
+---
+
+jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame
+git add src/x-auth.ts src/tools/x.ts src/tools/index.ts src/gateway.ts src/cli.ts
+git commit -m "feat(x): Phase 1 — OAuth PKCE + bookmarks_fetch tool"
+git push
+fatal: pathspec 'src/x-auth.ts' did not match any files
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   heartbeat-template.md
+	modified:   package-lock.json
+	modified:   package.json
+	modified:   src/heartbeat.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	test-heartbeat-parser.ts
+
+no changes added to commit (use "git add" and/or "git commit -a")
+remote: Permission to maikunari/mame.git denied to jerryalbertson.
+fatal: unable to access 'https://github.com/maikunari/mame.git/': The requested URL returned error: 403
+jerry@sp-studio:~/Projects/mame$
