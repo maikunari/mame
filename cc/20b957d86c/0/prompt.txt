@@ -1,0 +1,74 @@
+Read tasks/daily-digest-handoff.md for the dAIly digest feature brief. Phases 1, 2, and 3 are shipped — see memory/project_daily_digest_status.md for the current state, and memory/reference_th50_mame_cli.md for TH50 deployment specifics you MUST read before giving Mike any restart or CLI-invocation instructions. We're picking up at Phase 4.
+
+TH50 deployment — DO NOT GUESS. The ground truth:
+
+Process manager: systemd, NOT pm2, NOT Docker. Restart with sudo systemctl restart mame@mike.
+Project path: /home/jerry/Projects/mame (not /opt/mame despite deploy/setup.sh).
+Deploy sequence: cd ~/Projects/mame && git pull && npm run build && sudo systemctl restart mame@mike.
+Interactive CLI needs master-key unlock: export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -) then node ~/Projects/mame/dist/cli.js <cmd> then unset MAME_MASTER_KEY. The mame binary isn't always on PATH — use the full node dist/cli.js path.
+Primary persona: mike (not default). Magazine CLI auto-detects mike.yml.
+Phase 4 deliverables per the handoff doc:
+
+src/magazine/render.ts (~80 LOC) — read ~/.mame/magazine/issues/YYYY-MM-DD.json, render against src/magazine/template/index.html, inline styles.css into a <style> block in the HTML, write to ~/.mame/magazine/public/YYYY-MM-DD.html, also write/copy to latest.html.
+src/gateway.ts — add express.static route at /magazine/* served from MAME_HOME/magazine/public, plus a /magazine/ index handler listing all rendered issues reverse-chronologically. Each issue JSON has issueNumber, date, signal, stats — enough to produce a clean issue-list page. Add the route inside startWebhooks() following the pattern established by the /x/callback route from Phase 1.
+src/cli.ts — add mame magazine render [--date YYYY-MM-DD] subcommand. Should also render latest.html. Updates the existing mame magazine run subcommand to do ingest → generate → render in one pass.
+Templating — decide before writing code and ASK Mike:
+
+The template uses Handlebars syntax including {{#if (eq folder "(unfiled)")}}, {{#with}}, {{#each}}, and standard {{#if}}. Two options:
+
+(a) Add the handlebars npm package — ~140KB, standard, register a trivial eq helper. Clean, but Mike pushes back on new dependencies. Ask before adding.
+(b) Normalize (unfiled) → null in digest.ts upstream — then the template's {{#if (eq folder "(unfiled)")}} can become {{#unless folder}}, which is stock Handlebars. The remaining template still needs Handlebars (or a tiny custom engine). If Mike rejects the dep, write a minimal ~60-line Handlebars-subset engine that handles {{var}}, {{#if}}, {{#unless}}, {{#each}}, {{#with}}, dotted paths ({{masthead.title}}, {{oldGold.[0]}}), and .length. This is Phase 4's one real design decision.
+Verification on TH50:
+
+export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine render
+unset MAME_MASTER_KEY
+curl http://localhost:3847/magazine/latest.html | head -20
+Key files:
+
+Template: src/magazine/template/{index.html, preview.html, styles.css}
+Issue JSON contract: tasks/daily-digest-handoff.md lines 60-111, plus featured and rest: IssueItemWithFolder[] convenience fields added by src/magazine/digest.ts
+Reference for how to add an Express route: search src/gateway.ts for /x/callback (Phase 1 pattern)
+State helpers in src/magazine/state.ts: ISSUES_DIR, PUBLIC_DIR, issueJsonPath(date), todayISO(tz) — use these, don't hardcode paths
+Phase 5 (heartbeat daily-6am-JST wiring + Discord teaser) follows once the renderer lands.
+
+---
+
+is this what we wanna see? jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine render
+unset MAME_MASTER_KEY
+
+curl http://localhost:3847/magazine/latest.html | head -20
+curl http://localhost:3847/magazine/
+Usage:
+  mame magazine ingest [--date YYYY-MM-DD]                    Pull new bookmarks → JSONL + archive
+  mame magazine generate [--date YYYY-MM-DD] [--persona name] Build issue JSON from today's JSONL
+  mame magazine run [--date YYYY-MM-DD] [--persona name]      Ingest + generate end-to-end
+  mame magazine stats                                         Show archive + state summary
+[16:16:37.431] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   159  100   159    0     0  45781      0 --:--:-- --:--:-- --:--:-- 53000
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /magazine/latest.html</pre>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /magazine/</pre>
+</body>
+</html>
+jerry@sp-studio:~/Projects/mame$
