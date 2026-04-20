@@ -313,7 +313,7 @@ export class HeartbeatScheduler {
       return;
     }
 
-    const digest = await generateDailyDigest({ date, personaName: this.persona.name });
+    const digest = await generateDailyDigest({ date, persona: this.persona });
     log.info({ date, issueNumber: digest.issue.issueNumber }, "Magazine digest done");
 
     await renderIssue(date);
@@ -329,7 +329,13 @@ export class HeartbeatScheduler {
   /** Run the magazine pipeline immediately — for CLI testing and manual triggers. */
   async runMagazineNow(): Promise<void> {
     log.info("Running magazine pipeline now (manual trigger)");
-    await this.runMagazinePipeline();
+    try {
+      await this.runMagazinePipeline();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error({ err: msg }, "Magazine pipeline failed");
+      await this.notify(undefined, `❌ dAIly digest failed: ${msg}`);
+    }
   }
 
   private async parseSchedule(markdown: string): Promise<HeartbeatEntry[]> {

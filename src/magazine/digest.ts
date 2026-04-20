@@ -122,6 +122,10 @@ export interface GenerateOptions {
   date?: string;
   /** Persona name whose models[] we'll use for LLM calls. */
   personaName?: string;
+  /** Pre-loaded PersonaConfig — avoids a second loadPersona() call when the
+   *  caller already holds the config (e.g. heartbeat scheduler). Takes
+   *  precedence over personaName when both are supplied. */
+  persona?: PersonaConfig;
 }
 
 export interface GenerateResult {
@@ -137,10 +141,9 @@ export async function generateDailyDigest(opts: GenerateOptions = {}): Promise<G
   const startMs = Date.now();
   const cfg = loadConfig();
   const date = opts.date ?? todayISO(cfg.timezone);
-  const personaName = opts.personaName ?? "default";
-  const persona = loadPersona(personaName);
+  const persona = opts.persona ?? loadPersona(opts.personaName ?? "default");
 
-  log.info({ date, persona: personaName }, "digest generation starting");
+  log.info({ date, persona: persona.name }, "digest generation starting");
 
   const records = loadRawJsonl(date);
   if (records.length === 0) {
