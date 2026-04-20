@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.5.3",
+  "checkpoint_id": "2c6b7366ea6f",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    ".impeccable.md",
+    "src/magazine/digest.ts",
+    "src/magazine/ingest.ts",
+    "src/magazine/state.ts",
+    "src/magazine/template/index.html",
+    "src/magazine/template/preview.html",
+    "src/magazine/template/styles.css",
+    "src/tools/x.ts",
+    "src/x-bookmarks.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/2c/6b7366ea6f/0/metadata.json",
+      "transcript": "/2c/6b7366ea6f/0/full.jsonl",
+      "content_hash": "/2c/6b7366ea6f/0/content_hash.txt",
+      "prompt": "/2c/6b7366ea6f/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 483,
+    "cache_creation_tokens": 1237293,
+    "cache_read_tokens": 44002611,
+    "output_tokens": 211225,
+    "api_call_count": 193
+  }
+}

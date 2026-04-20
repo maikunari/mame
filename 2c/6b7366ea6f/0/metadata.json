@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.5.3",
+  "checkpoint_id": "2c6b7366ea6f",
+  "session_id": "d22aca89-dcb0-46a9-aa3f-07a2a4f66558",
+  "strategy": "manual-commit",
+  "created_at": "2026-04-20T06:06:41.314006Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    ".impeccable.md",
+    "src/magazine/digest.ts",
+    "src/magazine/ingest.ts",
+    "src/magazine/state.ts",
+    "src/magazine/template/index.html",
+    "src/magazine/template/preview.html",
+    "src/magazine/template/styles.css",
+    "src/tools/x.ts",
+    "src/x-bookmarks.ts"
+  ],
+  "agent": "Claude Code",
+  "turn_id": "d745f7ba3a91",
+  "token_usage": {
+    "input_tokens": 483,
+    "cache_creation_tokens": 1237293,
+    "cache_read_tokens": 44002611,
+    "output_tokens": 211225,
+    "api_call_count": 193
+  },
+  "session_metrics": {
+    "turn_count": 33
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-04-20T06:06:39.339412Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 1557,
+    "human_modified": 29,
+    "human_removed": 0,
+    "total_committed": 1557,
+    "total_lines_changed": 1586,
+    "agent_percentage": 0,
+    "metric_version": 2
+  }
+}
