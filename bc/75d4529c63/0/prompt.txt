@@ -1,0 +1,999 @@
+jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame && git pull && npm run build && sudo systemctl restart mame@mike
+
+export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine generate
+unset MAME_MASTER_KEY
+remote: Enumerating objects: 29, done.
+remote: Counting objects: 100% (29/29), done.
+remote: Compressing objects: 100% (12/12), done.
+remote: Total 21 (delta 7), reused 21 (delta 7), pack-reused 0 (from 0)
+Unpacking objects: 100% (21/21), 7.94 KiB | 188.00 KiB/s, done.
+From https://github.com/maikunari/mame
+   eaf2a47..351e2fe  main                  -> origin/main
+   ce29af7..17aaed7  entire/checkpoints/v1 -> origin/entire/checkpoints/v1
+Updating eaf2a47..351e2fe
+Fast-forward
+ src/cli.ts | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+> mame@0.1.2 build
+> tsc
+
+Error: No raw bookmarks found for 2026-04-20 at /home/jerry/.mame/magazine/raw/bookmarks-2026-04-20.jsonl. Run ingest first.
+[12:27:52.710] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:27:52.751] INFO: digest generation starting
+    component: "magazine:digest"
+    date: "2026-04-20"
+    persona: "mike"
+
+---
+
+jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine ingest
+node ~/Projects/mame/dist/cli.js magazine generate
+unset MAME_MASTER_KEY
+[12:28:45.085] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:28:45.126] INFO: ingest run starting
+    component: "magazine:ingest"
+    date: "2026-04-20"
+[12:28:45.563] INFO: found folders
+    component: "magazine:ingest"
+    folders: [
+      "Development",
+      "SEO",
+      "Claude code",
+      "Design",
+      "Shopify",
+      "Dogs & Animals",
+      "Ai",
+      "OpenClaw",
+      "Marketing",
+      "Security",
+      "crypto",
+      "Study",
+      "FF",
+      "Writing",
+      "Quotes to Remember"
+    ]
+[12:28:45.681] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Development"
+    err: "Error: X API error (404): "
+[12:28:45.856] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "SEO"
+    err: "Error: X API error (404): "
+[12:28:45.973] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Claude code"
+    err: "Error: X API error (404): "
+[12:28:46.098] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Design"
+    err: "Error: X API error (404): "
+[12:28:46.213] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Shopify"
+    err: "Error: X API error (404): "
+[12:28:46.341] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Dogs & Animals"
+    err: "Error: X API error (404): "
+[12:28:46.457] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Ai"
+    err: "Error: X API error (404): "
+[12:28:46.590] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "OpenClaw"
+    err: "Error: X API error (404): "
+[12:28:46.706] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Marketing"
+    err: "Error: X API error (404): "
+[12:28:46.836] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Security"
+    err: "Error: X API error (404): "
+[12:28:46.952] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "crypto"
+    err: "Error: X API error (404): "
+[12:28:47.077] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Study"
+    err: "Error: X API error (404): "
+[12:28:47.207] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "FF"
+    err: "Error: X API error (404): "
+[12:28:47.335] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Writing"
+    err: "Error: X API error (404): "
+[12:28:47.462] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Quotes to Remember"
+    err: "Error: X API error (404): "
+[12:28:48.041] INFO: bookmark walk complete
+    component: "magazine:ingest"
+    collected: 99
+    totalScanned: 99
+{
+  "date": "2026-04-20",
+  "newCount": 99,
+  "totalScanned": 99,
+  "byFolder": {
+    "(unfiled)": 99
+  },
+  "rawFile": "/home/jerry/.mame/magazine/raw/bookmarks-2026-04-20.jsonl",
+  "newestId": "2045566281991311483"
+}
+[12:28:59.664] INFO: archive upserted
+    component: "magazine:ingest"
+    inserted: 99
+    updated: 0
+[12:28:59.822] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:28:59.861] INFO: digest generation starting
+    component: "magazine:digest"
+    date: "2026-04-20"
+    persona: "mike"
+[12:29:01.140] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: One API. Send messages on all channels.\n\n**whyItMatters**: A single integration point for multi-channel messaging (SMS, push, email, chat, etc.) saves Mike dev time when wiring notifications into his own infra or AI-augmented tools."
+    hint: "summarize bookmark 2030114929013821547"
+[12:29:01.140] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2030114929013821547"
+    err: "Error: Malformed JSON in summarize bookmark 2030114929013821547: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:01.365] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A builder tested Claude Opus 4.7 by feeding a design-director agent (built last month for OpenClaw) a set of reference sites. Using Paper Design MCP + Claude Code, it generated a rough draft in 15 minutes and a production-grade Framer-level site in under an hour.\n\n**whyItMatters**: Shows a concrete, repeatable AI-augmented design-to-code workflow that collapses what used to take days into under an hour, directly relevant to the kind of high-leverage dev-tooling and agent pipelines Mike ships."
+    hint: "summarize bookmark 2044978898371563940"
+[12:29:01.365] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044978898371563940"
+    err: "Error: Malformed JSON in summarize bookmark 2044978898371563940: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:02.339] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: A sleek, modern onboarding widget built collaboratively with Claude that demonstrates clean UI patterns, micro-interactions, and progressive disclosure for user setup flows.\n\n**WhyItMatters**: Shows a practical example of rapidly shipping polished frontend components using Claude as a design and implementation partner, directly relevant to how Mike can accelerate his own dev tool UIs and customer-facing interfaces."
+    hint: "summarize bookmark 2044352219424682256"
+[12:29:02.339] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044352219424682256"
+    err: "Error: Malformed JSON in summarize bookmark 2044352219424682256: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:02.538] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Open-source repo of 63 pre-built Claude/Code/Cursor agent skills that connect directly to a Shopify Admin API. They let an LLM agent perform concrete operations like recovering abandoned carts, auditing inventory and SEO metadata, running revenue reports, processing refunds, bulk price updates, fulfillment status checks, and customer cohort analysis.\n\n**whyItMatters**: These skills give Mike ready-made, battle-tested MCP-style tools that can be dropped into his own AI-augmented dev workflows or internal admin agents, saving him days of writing Shopify GraphQL wrappers and error-prone permission scaffolding."
+    hint: "summarize bookmark 2043631358149280080"
+[12:29:02.538] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2043631358149280080"
+    err: "Error: Malformed JSON in summarize bookmark 2043631358149280080: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:02.598] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nThis is a visual proof showing three consecutive triangular numbers (triplets) whose sum is a perfect square. The diagram illustrates the algebraic identity 3n(n+1)/2 + 3(n+1)(n+2)/2 + 3(n+2)(n+3)/2 = [3(n+1.5)]² or similar clean square forms.\n\n**WhyIt Matters:**  \nPatterns like this surface in number theory and discrete math that often inspire elegant optimizations or visualizations in algorithmic code; Mike can quickly test whether similar identities can be auto-discovered or used to generate test cases for his math-heavy dev tools."
+    hint: "summarize bookmark 2044675543573098613"
+[12:29:02.598] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044675543573098613"
+    err: "Error: Malformed JSON in summarize bookmark 2044675543573098613: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:03.249] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA 40-line bash script that uses Common Crawl's public domain-level hyperlink graph (latest 2026 release) + DuckDB to fetch all known backlinks to any domain for free. It automatically downloads the ~1 GB vertices and edges files, reverses the domain, runs a SQL query, and outputs linking domains with counts.\n\n**Why It Matters:**  \nGives you on-demand, zero-cost backlink data for competitor analysis, link-building research, or internal link-graph tooling without paying for Ahrefs/Majestic, and the script is small enough to fork into your own dev workflows or cron jobs."
+    hint: "summarize bookmark 2045169132748877992"
+[12:29:03.249] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2045169132748877992"
+    err: "Error: Malformed JSON in summarize bookmark 2045169132748877992: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:03.673] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA practical prompt template that forces LLMs (especially Claude and GPT-4o) to output clean, professional data visualizations instead of default rainbow/3D clutter, tiny fonts, and excessive gridlines. The linked tweet shows before/after examples and the exact system prompt.\n\n**Why It Matters**\nAs someone who ships AI-augmented developer tools and frequently generates internal dashboards, this prompt saves hours of post-editing and produces charts that are immediately usable in production UIs and reports."
+    hint: "summarize bookmark 2044219722875433228"
+[12:29:03.673] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044219722875433228"
+    err: "Error: Malformed JSON in summarize bookmark 2044219722875433228: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:04.671] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nSlash v3 is an AI-agent-powered search engine that ranks results by real user signals (upvotes, likes, money spent) instead of editorial curation. It now includes Reddit comments, X posts, and YouTube transcripts with no API keys required for core sources; the repo has passed 20k GitHub stars.\n\n**Why It Matters:**  \nIt gives Mike a zero-setup, high-signal search layer over the raw, unfiltered internet that can be directly wired into his own AI-augmented dev tools and internal knowledge workflows."
+    hint: "summarize bookmark 2042320564417937562"
+[12:29:04.671] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042320564417937562"
+    err: "Error: Malformed JSON in summarize bookmark 2042320564417937562: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:05.032] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: VedaVaaNi is an interactive web app that teaches precise phonetic chanting and prosody (Chandas) of the Rig Veda and Krishna Yajur Veda through guided practice, audio feedback, and real-time correction.\n\n**whyItMatters**: For Mike, who ships AI-augmented learning tools and runs his own infra, this is a clean real-world example of building domain-specific, precision-focused educational software that could be extended with speech models, fine-tuned audio correction, or self-hosted inference."
+    hint: "summarize bookmark 2042986285149884499"
+[12:29:05.032] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042986285149884499"
+    err: "Error: Malformed JSON in summarize bookmark 2042986285149884499: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:06.029] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: The thread tells the story of Helen Hadsell, who in 1948 learned a simple 4-letter “code” (later revealed as “WISH”) and allegedly used a specific mental technique to win dozens of contests and prizes—including a house—for the next 30 years. It frames her results as evidence that focused desire plus a repeatable protocol can override ordinary probability.\n\n**WhyItMatters**: For Mike, who constantly experiments with AI-augmented personal systems and personal protocols, the anecdote is a clean case study in whether a lightweight mental workflow can be stress-tested, automated, or combined with LLMs to improve real-world outcomes in contests, deal-sourcing, or personal goal execution."
+    hint: "summarize bookmark 2042896877906280726"
+[12:29:06.029] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042896877906280726"
+    err: "Error: Malformed JSON in summarize bookmark 2042896877906280726: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:06.929] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA tweet promoting astrology advice that positions your Rahu nakshatra placement (from Vedic astrology) as the core indicator of your life's purpose and destiny. It claims that studying this specific lunar mansion placement resolves feelings of aimlessness.\n\n**WhyItMatters:**  \nMike can treat this as a lightweight example of how people build sticky personal \"operating manuals\" around a single high-signal interpretive framework — similar to how he might design an AI-augmented journaling or life-log system that surfaces one dominant pattern to cut through directional noise."
+    hint: "summarize bookmark 2042573811162263941"
+[12:29:06.929] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042573811162263941"
+    err: "Error: Malformed JSON in summarize bookmark 2042573811162263941: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:07.397] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A viral Chinese meme song titled “赢麻了” (win until麻了 / win so hard it’s numb), created by netizens as an ironic victory anthem that mocks over-the-top triumphant language. The short video clip has spread widely on Chinese social platforms.\n\n**whyItMatter**: Demonstrates how fast participatory meme culture can turn propaganda-style slogans into absurdist humor at scale; useful reference for anyone building community-driven or viral content tools that need to detect and amplify emerging cultural patterns."
+    hint: "summarize bookmark 2042453449028354211"
+[12:29:07.397] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042453449028354211"
+    err: "Error: Malformed JSON in summarize bookmark 2042453449028354211: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:07.435] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA Twitter thread sharing a series of absurd, AI-generated fake historical paintings created with Midjourney prompts that deliberately mix modern tech culture with classical European portrait styles (e.g. “Renaissance painting of Elon Musk as a 17th-century cardinal”).\n\n**Why It Matters**\nIt’s a lightweight reminder of how easily promptable image models can produce convincing-looking nonsense; good calibration for evaluating how much downstream tooling (RAG, eval harnesses, synthetic data pipelines) must compensate for the same hallucination patterns in text and code."
+    hint: "summarize bookmark 2042741107138629924"
+[12:29:07.436] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042741107138629924"
+    err: "Error: Malformed JSON in summarize bookmark 2042741107138629924: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:08.528] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA short video demonstrates text-based animations rendered entirely in Unicode Braille patterns (⠿⠇⠏ etc.), creating smooth motion and shading effects without any images or CSS.\n\n**Why It Matters:**  \nPure-text visual effects like this are lightweight, copy-pasteable, and work in terminals, READMEs, or any environment where you control character output — useful when you're building terminal UIs, dashboards, or embedding micro-animations inside dev tools."
+    hint: "summarize bookmark 2021273849485005026"
+[12:29:08.528] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2021273849485005026"
+    err: "Error: Malformed JSON in summarize bookmark 2021273849485005026: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:09.270] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A Claude-powered \"Code\" skill that uses Chrome's MCP (Model Context Protocol) to inspect a live website's rendered DOM, fonts, colors, and layout, then generates a pixel-perfect clone in a single prompt. The full implementation is open source on GitHub.\n\n**whyItMatters**: This demonstrates a practical pattern for letting an LLM directly read the browser's live computed styles and structure instead of guessing from screenshots or HTML — exactly the kind of high-fidelity, tool-augmented workflow Mike can adapt for his own dev-tooling and internal AI agents."
+    hint: "summarize bookmark 2041112612981916146"
+[12:29:09.270] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041112612981916146"
+    err: "Error: Malformed JSON in summarize bookmark 2041112612981916146: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:09.393] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: Drams is a free collection of beautifully crafted, interactive Framer components (buttons, switches, sliders, dials, rotary radios, Braun-inspired shavers, OP-1 style keys, etc.) built with strict adherence to Dieter Rams’ ten principles of good design. The site doubles as a remix platform where creators can submit and get featured.\n\n**WhyItMatters**: These production-ready, skeuomorphic UI assets can be dropped straight into Framer prototypes or used as high-fidelity reference when Mike is designing or auditing the tactile feel of the developer tools and internal systems he ships."
+    hint: "summarize bookmark 2041766569974624357"
+[12:29:09.393] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041766569974624357"
+    err: "Error: Malformed JSON in summarize bookmark 2041766569974624357: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:09.563] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: /autofix-pr is a Cursor command that lets you trigger the cloud-based Autofix PR workflow directly from your terminal after pushing a branch. It uploads your full session context so the autofixer can resolve CI failures, address review comments, and iterate without manual intervention.\n\n**WhyItMatters**: Mike can close the loop on a PR in one CLI step instead of switching to the web UI or re-pasting context, tightening his local-to-cloud dev workflow and cutting the friction between \"done coding\" and \"shipped with green CI.\""
+    hint: "summarize bookmark 2041654973491245509"
+[12:29:09.563] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041654973491245509"
+    err: "Error: Malformed JSON in summarize bookmark 2041654973491245509: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:09.574] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA developer built a local dashboard that parses the log files Claude Code already writes to disk, surfacing per-model and per-project token usage that Anthropic’s official UI deliberately hides (only showing a single progress bar).\n\n**Why It Matters**\nGives you precise observability into token spend across projects and models without relying on a black-box vendor dashboard, which is directly useful when you’re wiring Claude into your own dev tools, agents, or billing-aware workflows."
+    hint: "summarize bookmark 2041595776074236328"
+[12:29:09.574] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041595776074236328"
+    err: "Error: Malformed JSON in summarize bookmark 2041595776074236328: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:10.586] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nGoogle AI Studio gives 1,500 free daily requests to the Gemma 4 31B model, which can be routed through Vercel’s AI SDK Gateway to power a NousResearch Hermes Agent setup.\n\n**Why It Matters:**  \nGives Mike a zero-cost, high-limit backend for experimenting with 31B-scale agent workflows without spinning up his own infra or burning through paid API credits."
+    hint: "summarize bookmark 2040828031707570233"
+[12:29:10.586] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040828031707570233"
+    err: "Error: Malformed JSON in summarize bookmark 2040828031707570233: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:12.286] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**The X post is a recommendation to follow @chris_nectiv, who has been producing consistently high-signal research threads (the linked post is one of them).**\n\nThe linked tweet itself could not be retrieved due to an X platform error, and the article excerpt is a generic \"something went wrong\" page.\n\n**Why Mike should care:** Chris’s output appears to be the kind of deep, well-researched material that surfaces new tools, techniques, or architectural ideas worth evaluating for Mike’s own AI-augmented dev tools and infra. Following a consistent high-quality researcher is low-effort, high-leverage signal for daily curation."
+    hint: "summarize bookmark 2040531538098683945"
+[12:29:12.286] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040531538098683945"
+    err: "Error: Malformed JSON in summarize bookmark 2040531538098683945: SyntaxError: Unexpected token '*', \"**The X po\"... is not valid JSON"
+[12:29:12.877] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nAndrej Karpathy's tweet shares the concept of an \"idea file\" — a simple personal repository of raw ideas, prompts, and half-baked concepts that can be fed to LLM agents instead of polished code or full apps.\n\n**Why It Matters:**  \nAs someone who ships daily AI-augmented tools and maintains personal workflows, this workflow shift from hoarding finished artifacts to capturing high-quality idea seeds directly accelerates experimentation and agent-driven building on your own infra."
+    hint: "summarize bookmark 2040470801506541998"
+[12:29:12.878] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040470801506541998"
+    err: "Error: Malformed JSON in summarize bookmark 2040470801506541998: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:13.729] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Headless Chromium that runs directly in the terminal with full WebGL, WebGPU, audio, and video support. It launches in <1s, sustains 60 FPS, idles at 0% CPU when inactive, works over SSH, and requires no X11 or graphical window.\n\n**whyIt Matters**: Gives Mike a lightweight, instantly-available browser he can embed in dev tools, CI pipelines, or remote infra without spinning up a full desktop environment or dealing with display servers."
+    hint: "summarize bookmark 2039355225895760062"
+[12:29:13.729] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039355225895760062"
+    err: "Error: Malformed JSON in summarize bookmark 2039355225895760062: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:13.791] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: The tweet describes building topic-specific personal knowledge bases by feeding LLMs curated research materials so they can synthesize, connect, and reason over that domain instead of generic pretraining data. The author reports shifting a large share of their token usage from code generation to operating on and expanding these specialized knowledge stores.\n\n**WhyItMatters**: For an engineer who ships AI-augmented tools and runs personal infra, this pattern offers a lightweight way to create persistent, queryable domain experts that compound over time without maintaining yet another vector DB or retrieval pipeline."
+    hint: "summarize bookmark 2039805659525644595"
+[12:29:13.791] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039805659525644595"
+    err: "Error: Malformed JSON in summarize bookmark 2039805659525644595: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:14.226] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:** A practical workflow using Claude to first extract a project's visual language into design-system.md, install Remotion, then generate 16:9 motion graphics of app interactions that can be used as YouTube b-roll or promotional footage.\n\n**WhyItMatters:** This gives Mike a fast, code-driven way to turn existing apps into high-quality animated assets without hiring designers or learning video tools, directly accelerating his ability to produce demo videos and marketing content for the dev tools he ships."
+    hint: "summarize bookmark 2039444150743867561"
+[12:29:14.226] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039444150743867561"
+    err: "Error: Malformed JSON in summarize bookmark 2039444150743867561: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:14.824] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**SUMMARY**\nStitch is an AI image generation tool (likely Midjourney-focused) that released a tutorial video by David East showing prompt techniques for premium outputs, plus a new \"prompt enhancer\" web tool that refines user inputs before sending them to the model.\n\n**WHY IT MATTERS**\nAs someone who ships AI-augmented developer tools and runs personal infra, this gives you a quick way to extract repeatable prompting patterns from video + an enhancer you can inspect, fork, or pipe into your own prompt-chaining pipelines."
+    hint: "summarize bookmark 2039025289653846256"
+[12:29:14.824] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039025289653846256"
+    err: "Error: Malformed JSON in summarize bookmark 2039025289653846256: SyntaxError: Unexpected token '*', \"**SUMMARY*\"... is not valid JSON"
+[12:29:16.441] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**SUMMARY**  \nPractical 80/20 guide for turning Claude into a persistent coworker using a sandboxed folder structure, three core memory files (about_me, brand_voice, working_preferences), Zapier MCP for 8,000-app integrations, and an unnamed new tool (linked in the tweet).\n\n**WHY IT MATTERS**  \nThese concrete patterns let Mike embed personal context and external tool access into Claude sessions without granting dangerous system-level privileges, directly accelerating his daily AI-augmented dev workflows and personal automation stack."
+    hint: "summarize bookmark 2040526570880954510"
+[12:29:16.441] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040526570880954510"
+    err: "Error: Malformed JSON in summarize bookmark 2040526570880954510: SyntaxError: Unexpected token '*', \"**SUMMARY*\"... is not valid JSON"
+[12:29:16.893] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nAndrej Karpathy shared a 12-minute NotebookLM-generated video overview that distills one of his recent long-form posts into an engaging, narrated deep-dive complete with custom visuals and audio.\n\n**Why It Matters:**  \nIt shows a practical, zero-code way to turn dense technical writing into consumable multimedia, directly relevant for Mike when he wants to repurpose his own notes, docs, or internal wikis into quick explanatory assets without leaving his dev workflow."
+    hint: "summarize bookmark 2040007450141593925"
+[12:29:16.893] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040007450141593925"
+    err: "Error: Malformed JSON in summarize bookmark 2040007450141593925: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:17.078] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Claude Code hidden features thread.**\n\nThe tweet starts a detailed list of lesser-known, high-leverage tricks inside Anthropic’s Claude Code (their coding-focused agentic interface).\n\n**Why Mike should care:**  \nThese workflow shortcuts directly improve speed and precision when he’s building, debugging, and iterating on his own AI-augmented dev tools and internal infra."
+    hint: "summarize bookmark 2038454336355999749"
+[12:29:17.078] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2038454336355999749"
+    err: "Error: Malformed JSON in summarize bookmark 2038454336355999749: SyntaxError: Unexpected token '*', \"**Claude C\"... is not valid JSON"
+[12:29:17.597] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Invalid bookmark – couldn't retrieve content.**\n\nThe linked X article failed to load (privacy extension or transient X error) and contains no usable excerpt or thread text.\n\nSkip it; Mike already has enough clean signals to evaluate today."
+    hint: "summarize bookmark 2038237755654783107"
+[12:29:17.597] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2038237755654783107"
+    err: "Error: Malformed JSON in summarize bookmark 2038237755654783107: SyntaxError: Unexpected token '*', \"**Invalid \"... is not valid JSON"
+[12:29:18.392] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**No valid content to summarize.**\n\nThe saved link leads to an X article that failed to load (likely due to privacy extensions, rate limiting, or region restrictions). Without accessible tweet text or article body, can't produce an editorial summary or relevance note."
+    hint: "summarize bookmark 2037604599398322682"
+[12:29:18.392] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037604599398322682"
+    err: "Error: Malformed JSON in summarize bookmark 2037604599398322682: SyntaxError: Unexpected token '*', \"**No valid\"... is not valid JSON"
+[12:29:18.403] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: A builder bought an $800 used Lenovo ThinkStation P620 (Threadripper PRO workstation) on eBay, upgraded it with older DDR4 RAM and a 4 TB SSD, and now runs heavy local agent-coding workloads on it. The post argues that serious local agent development at scale favors high-core-count, high-RAM used enterprise hardware over renting distant cloud GPUs.\n\n**WhyItMatters**: For Mike, who ships AI-augmented dev tools and runs his own infra, this is concrete proof that $800-$2k of used workstation silicon often beats paying per-hour cloud rates when you're iterating on long-running, memory-hungry coding agents."
+    hint: "summarize bookmark 2037743464704549198"
+[12:29:18.403] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037743464704549198"
+    err: "Error: Malformed JSON in summarize bookmark 2037743464704549198: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:20.687] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Anthropic released a research preview of Claude Computer Use: an agent that directly controls a macOS desktop session to open applications, browse, edit spreadsheets, and perform any screen-based task a human would. Currently available only inside Claude for Work and Claude Code.\n\n**whyItMatters**: This is the first production-grade foundation model that ships reliable GUI control instead of just API calls, letting Mike explore building AI-augmented developer tools that manipulate real IDEs, local infra dashboards, and desktop workflows without brittle wrappers."
+    hint: "summarize bookmark 2036195789601374705"
+[12:29:20.687] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036195789601374705"
+    err: "Error: Malformed JSON in summarize bookmark 2036195789601374705: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:20.971] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:** Renoise is a video generation system that lets you program ads and creatives instead of manually shooting or editing them. It combines a Claude-powered code interface with Seedance 2.0 to turn one product photo into hundreds of finished, varied video advertisements.\n\n**WhyItMatters:** For Mike, who builds and ships AI-augmented dev tools and runs custom infra, this is a concrete example of “programming” media at scale—something he can study for new interaction patterns, agent workflows, or self-hosted pipelines that turn prompts and code into high-volume creative output."
+    hint: "summarize bookmark 2036089896503529521"
+[12:29:20.971] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036089896503529521"
+    err: "Error: Malformed JSON in summarize bookmark 2036089896503529521: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:21.167] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nThe linked thread promotes a short, practical guide to building a minimal reliable LLM agent using just a handful of tools (search, code interpreter, memory). The core thesis is captured in the quote: \"Fewer tools = more reliable agent.\"\n\n**Why It Matters:**  \nFewer moving parts directly translates to fewer failure modes and easier debugging in the agents you ship, so you can get a working prototype running this weekend and iterate from a solid, maintainable base instead of drowning in tool-calling complexity."
+    hint: "summarize bookmark 2037716063157436860"
+[12:29:21.167] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037716063157436860"
+    err: "Error: Malformed JSON in summarize bookmark 2037716063157436860: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:21.615] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**JSON Output**\n\n```json\n{\n  \"summary\": \"12-minute YouTube tutorial explaining GStack, Garry Tan’s open-source Claude toolkit that adds specialized workflow ‘skills’ (CEO mode, PM mode, Engineer mode, etc.) to turn Claude Code into a more structured programming collaborator.\",\n  \"whyItMatters\": \"Gives Mike a concrete way to inject repeatable, opinionated workflows into Claude that could be adapted for his own AI-augmented dev tools and daily editorial pipelines.\"\n}\n```"
+    hint: "summarize bookmark 2036051946935877849"
+[12:29:21.615] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036051946935877849"
+    err: "Error: Malformed JSON in summarize bookmark 2036051946935877849: SyntaxError: Unexpected token '*', \"**JSON Out\"... is not valid JSON"
+[12:29:21.991] INFO: no Old Gold candidates available — archive may be too small or fully recently-resurfaced
+    component: "magazine:digest"
+✅ Issue #1 written to /home/jerry/.mame/magazine/issues/2026-04-20.json
+   Sections: 1
+   Items: 99
+   Old Gold: 0
+   Signal: "One API, self-healing browsers, and Claude-coded design agents arrive."
+   Runtime: 00:00:22
+[12:29:22.451] INFO: digest written
+    component: "magazine:digest"
+    path: "/home/jerry/.mame/magazine/issues/2026-04-20.json"
+    runtimeMs: 22607
+    items: 99
+    oldGold: 0
+jerry@sp-studio:~/Projects/mame$
+
+---
+
+jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine ingest
+node ~/Projects/mame/dist/cli.js magazine generate
+unset MAME_MASTER_KEY
+[12:28:45.085] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:28:45.126] INFO: ingest run starting
+    component: "magazine:ingest"
+    date: "2026-04-20"
+[12:28:45.563] INFO: found folders
+    component: "magazine:ingest"
+    folders: [
+      "Development",
+      "SEO",
+      "Claude code",
+      "Design",
+      "Shopify",
+      "Dogs & Animals",
+      "Ai",
+      "OpenClaw",
+      "Marketing",
+      "Security",
+      "crypto",
+      "Study",
+      "FF",
+      "Writing",
+      "Quotes to Remember"
+    ]
+[12:28:45.681] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Development"
+    err: "Error: X API error (404): "
+[12:28:45.856] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "SEO"
+    err: "Error: X API error (404): "
+[12:28:45.973] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Claude code"
+    err: "Error: X API error (404): "
+[12:28:46.098] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Design"
+    err: "Error: X API error (404): "
+[12:28:46.213] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Shopify"
+    err: "Error: X API error (404): "
+[12:28:46.341] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Dogs & Animals"
+    err: "Error: X API error (404): "
+[12:28:46.457] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Ai"
+    err: "Error: X API error (404): "
+[12:28:46.590] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "OpenClaw"
+    err: "Error: X API error (404): "
+[12:28:46.706] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Marketing"
+    err: "Error: X API error (404): "
+[12:28:46.836] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Security"
+    err: "Error: X API error (404): "
+[12:28:46.952] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "crypto"
+    err: "Error: X API error (404): "
+[12:28:47.077] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Study"
+    err: "Error: X API error (404): "
+[12:28:47.207] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "FF"
+    err: "Error: X API error (404): "
+[12:28:47.335] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Writing"
+    err: "Error: X API error (404): "
+[12:28:47.462] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Quotes to Remember"
+    err: "Error: X API error (404): "
+[12:28:48.041] INFO: bookmark walk complete
+    component: "magazine:ingest"
+    collected: 99
+    totalScanned: 99
+{
+  "date": "2026-04-20",
+  "newCount": 99,
+  "totalScanned": 99,
+  "byFolder": {
+    "(unfiled)": 99
+  },
+  "rawFile": "/home/jerry/.mame/magazine/raw/bookmarks-2026-04-20.jsonl",
+  "newestId": "2045566281991311483"
+}
+[12:28:59.664] INFO: archive upserted
+    component: "magazine:ingest"
+    inserted: 99
+    updated: 0
+[12:28:59.822] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:28:59.861] INFO: digest generation starting
+    component: "magazine:digest"
+    date: "2026-04-20"
+    persona: "mike"
+[12:29:01.140] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: One API. Send messages on all channels.\n\n**whyItMatters**: A single integration point for multi-channel messaging (SMS, push, email, chat, etc.) saves Mike dev time when wiring notifications into his own infra or AI-augmented tools."
+    hint: "summarize bookmark 2030114929013821547"
+[12:29:01.140] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2030114929013821547"
+    err: "Error: Malformed JSON in summarize bookmark 2030114929013821547: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:01.365] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A builder tested Claude Opus 4.7 by feeding a design-director agent (built last month for OpenClaw) a set of reference sites. Using Paper Design MCP + Claude Code, it generated a rough draft in 15 minutes and a production-grade Framer-level site in under an hour.\n\n**whyItMatters**: Shows a concrete, repeatable AI-augmented design-to-code workflow that collapses what used to take days into under an hour, directly relevant to the kind of high-leverage dev-tooling and agent pipelines Mike ships."
+    hint: "summarize bookmark 2044978898371563940"
+[12:29:01.365] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044978898371563940"
+    err: "Error: Malformed JSON in summarize bookmark 2044978898371563940: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:02.339] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: A sleek, modern onboarding widget built collaboratively with Claude that demonstrates clean UI patterns, micro-interactions, and progressive disclosure for user setup flows.\n\n**WhyItMatters**: Shows a practical example of rapidly shipping polished frontend components using Claude as a design and implementation partner, directly relevant to how Mike can accelerate his own dev tool UIs and customer-facing interfaces."
+    hint: "summarize bookmark 2044352219424682256"
+[12:29:02.339] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044352219424682256"
+    err: "Error: Malformed JSON in summarize bookmark 2044352219424682256: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:02.538] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Open-source repo of 63 pre-built Claude/Code/Cursor agent skills that connect directly to a Shopify Admin API. They let an LLM agent perform concrete operations like recovering abandoned carts, auditing inventory and SEO metadata, running revenue reports, processing refunds, bulk price updates, fulfillment status checks, and customer cohort analysis.\n\n**whyItMatters**: These skills give Mike ready-made, battle-tested MCP-style tools that can be dropped into his own AI-augmented dev workflows or internal admin agents, saving him days of writing Shopify GraphQL wrappers and error-prone permission scaffolding."
+    hint: "summarize bookmark 2043631358149280080"
+[12:29:02.538] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2043631358149280080"
+    err: "Error: Malformed JSON in summarize bookmark 2043631358149280080: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:02.598] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nThis is a visual proof showing three consecutive triangular numbers (triplets) whose sum is a perfect square. The diagram illustrates the algebraic identity 3n(n+1)/2 + 3(n+1)(n+2)/2 + 3(n+2)(n+3)/2 = [3(n+1.5)]² or similar clean square forms.\n\n**WhyIt Matters:**  \nPatterns like this surface in number theory and discrete math that often inspire elegant optimizations or visualizations in algorithmic code; Mike can quickly test whether similar identities can be auto-discovered or used to generate test cases for his math-heavy dev tools."
+    hint: "summarize bookmark 2044675543573098613"
+[12:29:02.598] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044675543573098613"
+    err: "Error: Malformed JSON in summarize bookmark 2044675543573098613: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:03.249] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA 40-line bash script that uses Common Crawl's public domain-level hyperlink graph (latest 2026 release) + DuckDB to fetch all known backlinks to any domain for free. It automatically downloads the ~1 GB vertices and edges files, reverses the domain, runs a SQL query, and outputs linking domains with counts.\n\n**Why It Matters:**  \nGives you on-demand, zero-cost backlink data for competitor analysis, link-building research, or internal link-graph tooling without paying for Ahrefs/Majestic, and the script is small enough to fork into your own dev workflows or cron jobs."
+    hint: "summarize bookmark 2045169132748877992"
+[12:29:03.249] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2045169132748877992"
+    err: "Error: Malformed JSON in summarize bookmark 2045169132748877992: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:03.673] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA practical prompt template that forces LLMs (especially Claude and GPT-4o) to output clean, professional data visualizations instead of default rainbow/3D clutter, tiny fonts, and excessive gridlines. The linked tweet shows before/after examples and the exact system prompt.\n\n**Why It Matters**\nAs someone who ships AI-augmented developer tools and frequently generates internal dashboards, this prompt saves hours of post-editing and produces charts that are immediately usable in production UIs and reports."
+    hint: "summarize bookmark 2044219722875433228"
+[12:29:03.673] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2044219722875433228"
+    err: "Error: Malformed JSON in summarize bookmark 2044219722875433228: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:04.671] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nSlash v3 is an AI-agent-powered search engine that ranks results by real user signals (upvotes, likes, money spent) instead of editorial curation. It now includes Reddit comments, X posts, and YouTube transcripts with no API keys required for core sources; the repo has passed 20k GitHub stars.\n\n**Why It Matters:**  \nIt gives Mike a zero-setup, high-signal search layer over the raw, unfiltered internet that can be directly wired into his own AI-augmented dev tools and internal knowledge workflows."
+    hint: "summarize bookmark 2042320564417937562"
+[12:29:04.671] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042320564417937562"
+    err: "Error: Malformed JSON in summarize bookmark 2042320564417937562: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:05.032] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: VedaVaaNi is an interactive web app that teaches precise phonetic chanting and prosody (Chandas) of the Rig Veda and Krishna Yajur Veda through guided practice, audio feedback, and real-time correction.\n\n**whyItMatters**: For Mike, who ships AI-augmented learning tools and runs his own infra, this is a clean real-world example of building domain-specific, precision-focused educational software that could be extended with speech models, fine-tuned audio correction, or self-hosted inference."
+    hint: "summarize bookmark 2042986285149884499"
+[12:29:05.032] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042986285149884499"
+    err: "Error: Malformed JSON in summarize bookmark 2042986285149884499: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:06.029] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: The thread tells the story of Helen Hadsell, who in 1948 learned a simple 4-letter “code” (later revealed as “WISH”) and allegedly used a specific mental technique to win dozens of contests and prizes—including a house—for the next 30 years. It frames her results as evidence that focused desire plus a repeatable protocol can override ordinary probability.\n\n**WhyItMatters**: For Mike, who constantly experiments with AI-augmented personal systems and personal protocols, the anecdote is a clean case study in whether a lightweight mental workflow can be stress-tested, automated, or combined with LLMs to improve real-world outcomes in contests, deal-sourcing, or personal goal execution."
+    hint: "summarize bookmark 2042896877906280726"
+[12:29:06.029] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042896877906280726"
+    err: "Error: Malformed JSON in summarize bookmark 2042896877906280726: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:06.929] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA tweet promoting astrology advice that positions your Rahu nakshatra placement (from Vedic astrology) as the core indicator of your life's purpose and destiny. It claims that studying this specific lunar mansion placement resolves feelings of aimlessness.\n\n**WhyItMatters:**  \nMike can treat this as a lightweight example of how people build sticky personal \"operating manuals\" around a single high-signal interpretive framework — similar to how he might design an AI-augmented journaling or life-log system that surfaces one dominant pattern to cut through directional noise."
+    hint: "summarize bookmark 2042573811162263941"
+[12:29:06.929] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042573811162263941"
+    err: "Error: Malformed JSON in summarize bookmark 2042573811162263941: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:07.397] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A viral Chinese meme song titled “赢麻了” (win until麻了 / win so hard it’s numb), created by netizens as an ironic victory anthem that mocks over-the-top triumphant language. The short video clip has spread widely on Chinese social platforms.\n\n**whyItMatter**: Demonstrates how fast participatory meme culture can turn propaganda-style slogans into absurdist humor at scale; useful reference for anyone building community-driven or viral content tools that need to detect and amplify emerging cultural patterns."
+    hint: "summarize bookmark 2042453449028354211"
+[12:29:07.397] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042453449028354211"
+    err: "Error: Malformed JSON in summarize bookmark 2042453449028354211: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:07.435] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA Twitter thread sharing a series of absurd, AI-generated fake historical paintings created with Midjourney prompts that deliberately mix modern tech culture with classical European portrait styles (e.g. “Renaissance painting of Elon Musk as a 17th-century cardinal”).\n\n**Why It Matters**\nIt’s a lightweight reminder of how easily promptable image models can produce convincing-looking nonsense; good calibration for evaluating how much downstream tooling (RAG, eval harnesses, synthetic data pipelines) must compensate for the same hallucination patterns in text and code."
+    hint: "summarize bookmark 2042741107138629924"
+[12:29:07.436] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2042741107138629924"
+    err: "Error: Malformed JSON in summarize bookmark 2042741107138629924: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:08.528] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nA short video demonstrates text-based animations rendered entirely in Unicode Braille patterns (⠿⠇⠏ etc.), creating smooth motion and shading effects without any images or CSS.\n\n**Why It Matters:**  \nPure-text visual effects like this are lightweight, copy-pasteable, and work in terminals, READMEs, or any environment where you control character output — useful when you're building terminal UIs, dashboards, or embedding micro-animations inside dev tools."
+    hint: "summarize bookmark 2021273849485005026"
+[12:29:08.528] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2021273849485005026"
+    err: "Error: Malformed JSON in summarize bookmark 2021273849485005026: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:09.270] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: A Claude-powered \"Code\" skill that uses Chrome's MCP (Model Context Protocol) to inspect a live website's rendered DOM, fonts, colors, and layout, then generates a pixel-perfect clone in a single prompt. The full implementation is open source on GitHub.\n\n**whyItMatters**: This demonstrates a practical pattern for letting an LLM directly read the browser's live computed styles and structure instead of guessing from screenshots or HTML — exactly the kind of high-fidelity, tool-augmented workflow Mike can adapt for his own dev-tooling and internal AI agents."
+    hint: "summarize bookmark 2041112612981916146"
+[12:29:09.270] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041112612981916146"
+    err: "Error: Malformed JSON in summarize bookmark 2041112612981916146: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:09.393] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: Drams is a free collection of beautifully crafted, interactive Framer components (buttons, switches, sliders, dials, rotary radios, Braun-inspired shavers, OP-1 style keys, etc.) built with strict adherence to Dieter Rams’ ten principles of good design. The site doubles as a remix platform where creators can submit and get featured.\n\n**WhyItMatters**: These production-ready, skeuomorphic UI assets can be dropped straight into Framer prototypes or used as high-fidelity reference when Mike is designing or auditing the tactile feel of the developer tools and internal systems he ships."
+    hint: "summarize bookmark 2041766569974624357"
+[12:29:09.393] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041766569974624357"
+    err: "Error: Malformed JSON in summarize bookmark 2041766569974624357: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:09.563] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: /autofix-pr is a Cursor command that lets you trigger the cloud-based Autofix PR workflow directly from your terminal after pushing a branch. It uploads your full session context so the autofixer can resolve CI failures, address review comments, and iterate without manual intervention.\n\n**WhyItMatters**: Mike can close the loop on a PR in one CLI step instead of switching to the web UI or re-pasting context, tightening his local-to-cloud dev workflow and cutting the friction between \"done coding\" and \"shipped with green CI.\""
+    hint: "summarize bookmark 2041654973491245509"
+[12:29:09.563] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041654973491245509"
+    err: "Error: Malformed JSON in summarize bookmark 2041654973491245509: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:09.574] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**\nA developer built a local dashboard that parses the log files Claude Code already writes to disk, surfacing per-model and per-project token usage that Anthropic’s official UI deliberately hides (only showing a single progress bar).\n\n**Why It Matters**\nGives you precise observability into token spend across projects and models without relying on a black-box vendor dashboard, which is directly useful when you’re wiring Claude into your own dev tools, agents, or billing-aware workflows."
+    hint: "summarize bookmark 2041595776074236328"
+[12:29:09.574] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2041595776074236328"
+    err: "Error: Malformed JSON in summarize bookmark 2041595776074236328: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:10.586] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nGoogle AI Studio gives 1,500 free daily requests to the Gemma 4 31B model, which can be routed through Vercel’s AI SDK Gateway to power a NousResearch Hermes Agent setup.\n\n**Why It Matters:**  \nGives Mike a zero-cost, high-limit backend for experimenting with 31B-scale agent workflows without spinning up his own infra or burning through paid API credits."
+    hint: "summarize bookmark 2040828031707570233"
+[12:29:10.586] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040828031707570233"
+    err: "Error: Malformed JSON in summarize bookmark 2040828031707570233: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:12.286] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**The X post is a recommendation to follow @chris_nectiv, who has been producing consistently high-signal research threads (the linked post is one of them).**\n\nThe linked tweet itself could not be retrieved due to an X platform error, and the article excerpt is a generic \"something went wrong\" page.\n\n**Why Mike should care:** Chris’s output appears to be the kind of deep, well-researched material that surfaces new tools, techniques, or architectural ideas worth evaluating for Mike’s own AI-augmented dev tools and infra. Following a consistent high-quality researcher is low-effort, high-leverage signal for daily curation."
+    hint: "summarize bookmark 2040531538098683945"
+[12:29:12.286] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040531538098683945"
+    err: "Error: Malformed JSON in summarize bookmark 2040531538098683945: SyntaxError: Unexpected token '*', \"**The X po\"... is not valid JSON"
+[12:29:12.877] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nAndrej Karpathy's tweet shares the concept of an \"idea file\" — a simple personal repository of raw ideas, prompts, and half-baked concepts that can be fed to LLM agents instead of polished code or full apps.\n\n**Why It Matters:**  \nAs someone who ships daily AI-augmented tools and maintains personal workflows, this workflow shift from hoarding finished artifacts to capturing high-quality idea seeds directly accelerates experimentation and agent-driven building on your own infra."
+    hint: "summarize bookmark 2040470801506541998"
+[12:29:12.878] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040470801506541998"
+    err: "Error: Malformed JSON in summarize bookmark 2040470801506541998: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:13.729] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Headless Chromium that runs directly in the terminal with full WebGL, WebGPU, audio, and video support. It launches in <1s, sustains 60 FPS, idles at 0% CPU when inactive, works over SSH, and requires no X11 or graphical window.\n\n**whyIt Matters**: Gives Mike a lightweight, instantly-available browser he can embed in dev tools, CI pipelines, or remote infra without spinning up a full desktop environment or dealing with display servers."
+    hint: "summarize bookmark 2039355225895760062"
+[12:29:13.729] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039355225895760062"
+    err: "Error: Malformed JSON in summarize bookmark 2039355225895760062: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:13.791] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: The tweet describes building topic-specific personal knowledge bases by feeding LLMs curated research materials so they can synthesize, connect, and reason over that domain instead of generic pretraining data. The author reports shifting a large share of their token usage from code generation to operating on and expanding these specialized knowledge stores.\n\n**WhyItMatters**: For an engineer who ships AI-augmented tools and runs personal infra, this pattern offers a lightweight way to create persistent, queryable domain experts that compound over time without maintaining yet another vector DB or retrieval pipeline."
+    hint: "summarize bookmark 2039805659525644595"
+[12:29:13.791] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039805659525644595"
+    err: "Error: Malformed JSON in summarize bookmark 2039805659525644595: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:14.226] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:** A practical workflow using Claude to first extract a project's visual language into design-system.md, install Remotion, then generate 16:9 motion graphics of app interactions that can be used as YouTube b-roll or promotional footage.\n\n**WhyItMatters:** This gives Mike a fast, code-driven way to turn existing apps into high-quality animated assets without hiring designers or learning video tools, directly accelerating his ability to produce demo videos and marketing content for the dev tools he ships."
+    hint: "summarize bookmark 2039444150743867561"
+[12:29:14.226] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039444150743867561"
+    err: "Error: Malformed JSON in summarize bookmark 2039444150743867561: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:14.824] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**SUMMARY**\nStitch is an AI image generation tool (likely Midjourney-focused) that released a tutorial video by David East showing prompt techniques for premium outputs, plus a new \"prompt enhancer\" web tool that refines user inputs before sending them to the model.\n\n**WHY IT MATTERS**\nAs someone who ships AI-augmented developer tools and runs personal infra, this gives you a quick way to extract repeatable prompting patterns from video + an enhancer you can inspect, fork, or pipe into your own prompt-chaining pipelines."
+    hint: "summarize bookmark 2039025289653846256"
+[12:29:14.824] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2039025289653846256"
+    err: "Error: Malformed JSON in summarize bookmark 2039025289653846256: SyntaxError: Unexpected token '*', \"**SUMMARY*\"... is not valid JSON"
+[12:29:16.441] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**SUMMARY**  \nPractical 80/20 guide for turning Claude into a persistent coworker using a sandboxed folder structure, three core memory files (about_me, brand_voice, working_preferences), Zapier MCP for 8,000-app integrations, and an unnamed new tool (linked in the tweet).\n\n**WHY IT MATTERS**  \nThese concrete patterns let Mike embed personal context and external tool access into Claude sessions without granting dangerous system-level privileges, directly accelerating his daily AI-augmented dev workflows and personal automation stack."
+    hint: "summarize bookmark 2040526570880954510"
+[12:29:16.441] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040526570880954510"
+    err: "Error: Malformed JSON in summarize bookmark 2040526570880954510: SyntaxError: Unexpected token '*', \"**SUMMARY*\"... is not valid JSON"
+[12:29:16.893] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nAndrej Karpathy shared a 12-minute NotebookLM-generated video overview that distills one of his recent long-form posts into an engaging, narrated deep-dive complete with custom visuals and audio.\n\n**Why It Matters:**  \nIt shows a practical, zero-code way to turn dense technical writing into consumable multimedia, directly relevant for Mike when he wants to repurpose his own notes, docs, or internal wikis into quick explanatory assets without leaving his dev workflow."
+    hint: "summarize bookmark 2040007450141593925"
+[12:29:16.893] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2040007450141593925"
+    err: "Error: Malformed JSON in summarize bookmark 2040007450141593925: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:17.078] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Claude Code hidden features thread.**\n\nThe tweet starts a detailed list of lesser-known, high-leverage tricks inside Anthropic’s Claude Code (their coding-focused agentic interface).\n\n**Why Mike should care:**  \nThese workflow shortcuts directly improve speed and precision when he’s building, debugging, and iterating on his own AI-augmented dev tools and internal infra."
+    hint: "summarize bookmark 2038454336355999749"
+[12:29:17.078] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2038454336355999749"
+    err: "Error: Malformed JSON in summarize bookmark 2038454336355999749: SyntaxError: Unexpected token '*', \"**Claude C\"... is not valid JSON"
+[12:29:17.597] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Invalid bookmark – couldn't retrieve content.**\n\nThe linked X article failed to load (privacy extension or transient X error) and contains no usable excerpt or thread text.\n\nSkip it; Mike already has enough clean signals to evaluate today."
+    hint: "summarize bookmark 2038237755654783107"
+[12:29:17.597] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2038237755654783107"
+    err: "Error: Malformed JSON in summarize bookmark 2038237755654783107: SyntaxError: Unexpected token '*', \"**Invalid \"... is not valid JSON"
+[12:29:18.392] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**No valid content to summarize.**\n\nThe saved link leads to an X article that failed to load (likely due to privacy extensions, rate limiting, or region restrictions). Without accessible tweet text or article body, can't produce an editorial summary or relevance note."
+    hint: "summarize bookmark 2037604599398322682"
+[12:29:18.392] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037604599398322682"
+    err: "Error: Malformed JSON in summarize bookmark 2037604599398322682: SyntaxError: Unexpected token '*', \"**No valid\"... is not valid JSON"
+[12:29:18.403] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary**: A builder bought an $800 used Lenovo ThinkStation P620 (Threadripper PRO workstation) on eBay, upgraded it with older DDR4 RAM and a 4 TB SSD, and now runs heavy local agent-coding workloads on it. The post argues that serious local agent development at scale favors high-core-count, high-RAM used enterprise hardware over renting distant cloud GPUs.\n\n**WhyItMatters**: For Mike, who ships AI-augmented dev tools and runs his own infra, this is concrete proof that $800-$2k of used workstation silicon often beats paying per-hour cloud rates when you're iterating on long-running, memory-hungry coding agents."
+    hint: "summarize bookmark 2037743464704549198"
+[12:29:18.403] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037743464704549198"
+    err: "Error: Malformed JSON in summarize bookmark 2037743464704549198: SyntaxError: Unexpected token '*', \"**Summary*\"... is not valid JSON"
+[12:29:20.687] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**summary**: Anthropic released a research preview of Claude Computer Use: an agent that directly controls a macOS desktop session to open applications, browse, edit spreadsheets, and perform any screen-based task a human would. Currently available only inside Claude for Work and Claude Code.\n\n**whyItMatters**: This is the first production-grade foundation model that ships reliable GUI control instead of just API calls, letting Mike explore building AI-augmented developer tools that manipulate real IDEs, local infra dashboards, and desktop workflows without brittle wrappers."
+    hint: "summarize bookmark 2036195789601374705"
+[12:29:20.687] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036195789601374705"
+    err: "Error: Malformed JSON in summarize bookmark 2036195789601374705: SyntaxError: Unexpected token '*', \"**summary*\"... is not valid JSON"
+[12:29:20.971] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:** Renoise is a video generation system that lets you program ads and creatives instead of manually shooting or editing them. It combines a Claude-powered code interface with Seedance 2.0 to turn one product photo into hundreds of finished, varied video advertisements.\n\n**WhyItMatters:** For Mike, who builds and ships AI-augmented dev tools and runs custom infra, this is a concrete example of “programming” media at scale—something he can study for new interaction patterns, agent workflows, or self-hosted pipelines that turn prompts and code into high-volume creative output."
+    hint: "summarize bookmark 2036089896503529521"
+[12:29:20.971] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036089896503529521"
+    err: "Error: Malformed JSON in summarize bookmark 2036089896503529521: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:21.167] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**Summary:**  \nThe linked thread promotes a short, practical guide to building a minimal reliable LLM agent using just a handful of tools (search, code interpreter, memory). The core thesis is captured in the quote: \"Fewer tools = more reliable agent.\"\n\n**Why It Matters:**  \nFewer moving parts directly translates to fewer failure modes and easier debugging in the agents you ship, so you can get a working prototype running this weekend and iterate from a solid, maintainable base instead of drowning in tool-calling complexity."
+    hint: "summarize bookmark 2037716063157436860"
+[12:29:21.167] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2037716063157436860"
+    err: "Error: Malformed JSON in summarize bookmark 2037716063157436860: SyntaxError: Unexpected token '*', \"**Summary:\"... is not valid JSON"
+[12:29:21.615] ERROR: LLM returned malformed JSON
+    component: "magazine:digest"
+    raw: "**JSON Output**\n\n```json\n{\n  \"summary\": \"12-minute YouTube tutorial explaining GStack, Garry Tan’s open-source Claude toolkit that adds specialized workflow ‘skills’ (CEO mode, PM mode, Engineer mode, etc.) to turn Claude Code into a more structured programming collaborator.\",\n  \"whyItMatters\": \"Gives Mike a concrete way to inject repeatable, opinionated workflows into Claude that could be adapted for his own AI-augmented dev tools and daily editorial pipelines.\"\n}\n```"
+    hint: "summarize bookmark 2036051946935877849"
+[12:29:21.615] WARN: summarize failed — using fallback
+    component: "magazine:digest"
+    id: "2036051946935877849"
+    err: "Error: Malformed JSON in summarize bookmark 2036051946935877849: SyntaxError: Unexpected token '*', \"**JSON Out\"... is not valid JSON"
+[12:29:21.991] INFO: no Old Gold candidates available — archive may be too small or fully recently-resurfaced
+    component: "magazine:digest"
+✅ Issue #1 written to /home/jerry/.mame/magazine/issues/2026-04-20.json
+   Sections: 1
+   Items: 99
+   Old Gold: 0
+   Signal: "One API, self-healing browsers, and Claude-coded design agents arrive."
+   Runtime: 00:00:22
+[12:29:22.451] INFO: digest written
+    component: "magazine:digest"
+    path: "/home/jerry/.mame/magazine/issues/2026-04-20.json"
+    runtimeMs: 22607
+    items: 99
+    oldGold: 0
+jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame && git pull && npm run build
+
+export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine generate
+unset MAME_MASTER_KEY
+remote: Enumerating objects: 32, done.
+remote: Counting objects: 100% (32/32), done.
+remote: Compressing objects: 100% (12/12), done.
+remote: Total 22 (delta 8), reused 22 (delta 8), pack-reused 0 (from 0)
+Unpacking objects: 100% (22/22), 54.21 KiB | 1009.00 KiB/s, done.
+From https://github.com/maikunari/mame
+   351e2fe..4210425  main                  -> origin/main
+   17aaed7..8f103c9  entire/checkpoints/v1 -> origin/entire/checkpoints/v1
+Updating 351e2fe..4210425
+Fast-forward
+ src/magazine/digest.ts | 98 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 84 insertions(+), 14 deletions(-)
+
+> mame@0.1.2 build
+> tsc
+
+[12:37:36.156] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[12:37:36.198] INFO: digest generation starting
+    component: "magazine:digest"
+    date: "2026-04-20"
+    persona: "mike"
+[12:38:00.879] INFO: no Old Gold candidates available — archive may be too small or fully recently-resurfaced
+    component: "magazine:digest"
+✅ Issue #2 written to /home/jerry/.mame/magazine/issues/2026-04-20.json
+   Sections: 1
+   Items: 99
+   Old Gold: 0
+   Signal: "AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate."
+   Runtime: 00:00:25
+[12:38:01.409] INFO: digest written
+    component: "magazine:digest"
+    path: "/home/jerry/.mame/magazine/issues/2026-04-20.json"
+    runtimeMs: 25230
+    items: 99
+    oldGold: 0
+jerry@sp-studio:~/Projects/mame$
+
+---
+
+I think w'er looking good jerry@sp-studio:~/Projects/mame$ cat ~/.mame/magazine/issues/2026-04-20.json | jq '{signal, sections: [.sections[].items[0:3]] | .[0]}'
+{
+  "signal": "AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate.",
+  "sections": [
+    {
+      "id": "2030114929013821547",
+      "source": "x",
+      "sourceUrl": "https://x.com/i/web/status/2030114929013821547",
+      "linkedUrl": null,
+      "linkedTitle": null,
+      "savedAt": "2026-03-07T02:54:51.000Z",
+      "summary": "Single API for sending messages across SMS, WhatsApp, RCS, Facebook Messenger, Slack, and Telegram from one unified endpoint.",
+      "whyItMatters": "(why-it-matters unavailable)",
+      "isOldGold": false
+    },
+    {
+      "id": "2045562091273077036",
+      "source": "x",
+      "sourceUrl": "https://x.com/i/web/status/2045562091273077036",
+      "linkedUrl": null,
+      "linkedTitle": null,
+      "savedAt": "2026-04-18T17:56:21.000Z",
+      "summary": "Email from X announcing updated API pricing that reduces the cost of GET calls for accessing a user's own data.",
+      "whyItMatters": "Direct impact on any internal tools Mike runs that scrape or poll his own X data, bookmarks, or timelines via the API.",
+      "isOldGold": false
+    },
+    {
+      "id": "2045566281991311483",
+      "source": "x",
+      "sourceUrl": "https://x.com/i/web/status/2045566281991311483",
+      "linkedUrl": null,
+      "linkedTitle": null,
+      "savedAt": "2026-04-18T18:13:01.000Z",
+      "summary": "Browser Harness is an open-source library that lets LLMs drive Chrome directly over CDP WebSocket with no intermediate framework. It includes a self-healing system that edits helper Python functions on-the-fly when tasks fail.",
+      "whyItMatters": "(why-it-matters unavailable)",
+      "isOldGold": false
+    }
+  ]
+}
+jerry@sp-studio:~/Projects/mame$ ^C
+jerry@sp-studio:~/Projects/mame$
+
+---
+
+OK we're actually in Opus right now so lets keep going
+
+---
+
+are you abel to see video?
+
+---
+
+YOu know what - lets use anthropic/news as our starting point, we can update once we get the main bits down : https://www.anthropic.com/news
+
+---
+
+impeccalbe has a whole suite of skills - thye are all installed : https://impeccable.style/skills/ - also question, the old articles will still stay right?  not like we get a brand new one every day? so I can refer back / serach etc?
+
+---
+
+can you open it in preview for me?
+
+---
+
+looks really nice!  A few small details - they 'why it matters section is a little too contrasty would be nice to be a little more subtle there -  /critique review the src/magazine/template daily magazine design
+
+---
+
+TOC is a great idea, p0 kill background entirely option  -  scope tackle all of them
+
+---
+
+honestly this headline is hard to read - the previous one was easier
+
+---
+
+no this font is still too hard to read, let change it - the original font was better here
+
+---
+
+/critique check the updated text, Bodoni was too hard to read for article headers
+
+---
+
+yeah we need to remove the other places as although that text looks cool its unfortuantely hard to read . questions 1 - same publication, 2 agreed
+
+---
+
+Excellent, all good now
+
+---
+
+actually one further thing - would be great if it was able to pull featured image (if there is one) from the tweet or linked article
+
+---
+
+/critique review the new home page magazine style for both usabiliity and style
+
+---
+
+Agree with all your recommendations, proceed
