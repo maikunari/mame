@@ -1,0 +1,11 @@
+we only going to use mike not mike-minimax : Multiple personas found: mike-minimax, mike
+Specify one with --persona <name>
+[12:23:42.440] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+Multiple personas found: mike-minimax, mike
+Specify one with --persona <name>
+[12:23:42.730] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+jerry@sp-studio:~/Projects/mame$
