@@ -12,6 +12,12 @@ import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats } from "./memory.js";
 import { childLogger } from "./logger.js";
 import { provideAnswer, hasPendingQuestion } from "./ask-human-state.js";
+import {
+  exchangeCodeForTokens,
+  storeTokens,
+  readPendingAuth,
+  clearPendingAuth,
+} from "./x-auth.js";
 
 const log = childLogger("gateway");
 
@@ -366,6 +372,58 @@ export class Gateway {
   private async startWebhooks(): Promise<void> {
     this.webhookServer.get("/health", (_req, res) => {
       res.json({ status: "ok", persona: this.persona.name, uptime: process.uptime() });
+    });
+
+    // X OAuth 2.0 PKCE callback — browser lands here after user approves on twitter.com
+    this.webhookServer.get("/x/callback", async (req, res) => {
+      const { code, state, error } = req.query;
+
+      if (error) {
+        res.status(400).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ Auth denied</h2><p>${error}</p></body></html>`);
+        return;
+      }
+
+      const pending = readPendingAuth();
+      if (!pending) {
+        res.status(400).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ No pending auth session</h2><p>Run <code>mame x auth</code> first.</p></body></html>`);
+        return;
+      }
+
+      if (state !== pending.state) {
+        res.status(400).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ State mismatch</h2><p>Possible CSRF. Run <code>mame x auth</code> again.</p></body></html>`);
+        clearPendingAuth();
+        return;
+      }
+
+      try {
+        const clientId = await this.vault.get("global", "X_CLIENT_ID");
+        const clientSecret = await this.vault.get("global", "X_CLIENT_SECRET");
+        if (!clientId || !clientSecret) {
+          res.status(500).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ Missing credentials</h2><p>X_CLIENT_ID or X_CLIENT_SECRET not in vault.</p></body></html>`);
+          return;
+        }
+
+        const tokens = await exchangeCodeForTokens(
+          code as string,
+          pending.verifier,
+          clientId,
+          clientSecret
+        );
+        await storeTokens(this.vault, tokens);
+        clearPendingAuth();
+        log.info("X OAuth 2.0 complete — tokens stored in vault");
+
+        res.send(`<!DOCTYPE html><html>
+<head><title>X Auth Complete</title></head>
+<body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center">
+  <h1>✅ Connected to X</h1>
+  <p>Mame can now access your bookmarks.</p>
+  <p style="color:#666">You can close this tab.</p>
+</body></html>`);
+      } catch (err) {
+        log.error({ err: String(err) }, "X callback: token exchange failed");
+        res.status(500).send(`<html><body style="font-family:sans-serif;max-width:500px;margin:80px auto;text-align:center"><h2>❌ Token exchange failed</h2><p>${String(err)}</p></body></html>`);
+      }
     });
 
     this.webhookServer.post("/webhook/:source", async (req, res) => {

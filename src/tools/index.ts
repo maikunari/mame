@@ -48,6 +48,7 @@ export async function loadTools(): Promise<void> {
   await import("./self-modify.js");
   await import("./self-config.js");
   await import("./bash.js");
+  await import("./x.js");
 }
 
 // ---------------------------------------------------------------------------

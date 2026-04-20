@@ -2,6 +2,7 @@
 // src/cli.ts — CLI entry point for `npx mame` commands
 
 import { execSync } from "child_process";
+import crypto from "crypto";
 import { runOnboarding } from "./onboard.js";
 import { MAME_HOME, loadConfig } from "./config.js";
 import { Vault } from "./vault.js";
@@ -347,6 +348,146 @@ async function main(): Promise<void> {
       break;
     }
 
+    case "x": {
+      const sub = args[1];
+
+      if (sub === "auth") {
+        const {
+          generatePkceChallenge,
+          buildAuthorizeUrl,
+          writePendingAuth,
+          readPendingAuth,
+          PENDING_AUTH_FILE,
+        } = await import("./x-auth.js");
+
+        const vault = new Vault();
+        const clientId = await vault.get("global", "X_CLIENT_ID");
+        if (!clientId) {
+          console.error("❌ X_CLIENT_ID not found in vault. Run:\n  mame secrets set global X_CLIENT_ID");
+          process.exit(1);
+        }
+
+        const state = crypto.randomUUID();
+        const { verifier, challenge } = generatePkceChallenge();
+
+        writePendingAuth({ state, verifier });
+
+        const url = buildAuthorizeUrl(clientId, challenge, state);
+        console.log("\n🔑 X OAuth 2.0 — open this URL in your browser:\n");
+        console.log(url);
+        console.log("\nWaiting for callback on http://localhost:3847/x/callback ...\n");
+        console.log("(Mame must be running — if not, start it with: mame start)\n");
+
+        // Poll until the pending file disappears (gateway consumed it) or timeout
+        const startMs = Date.now();
+        const timeoutMs = 180_000;
+
+        await new Promise<void>((resolve, reject) => {
+          const check = setInterval(async () => {
+            const pending = readPendingAuth();
+            if (!pending) {
+              // Pending file gone — gateway handled the callback
+              clearInterval(check);
+              const token = await vault.get("global", "X_ACCESS_TOKEN");
+              if (token) {
+                const expiresAt = await vault.get("global", "X_TOKEN_EXPIRES_AT");
+                const expiresDate = expiresAt
+                  ? new Date(parseInt(expiresAt, 10)).toLocaleString()
+                  : "unknown";
+                console.log(`✅ X auth complete! Access token stored.`);
+                console.log(`   Expires: ${expiresDate}`);
+                resolve();
+              } else {
+                reject(new Error("Pending file gone but no token in vault — check gateway logs"));
+              }
+            } else if (Date.now() - startMs > timeoutMs) {
+              clearInterval(check);
+              reject(new Error("Timed out waiting for X callback (3 min). Did you open the URL in a browser?"));
+            }
+          }, 2000);
+        });
+        break;
+      }
+
+      if (sub === "status") {
+        const vault = new Vault();
+        const [accessToken, refreshToken, expiresAt] = await Promise.all([
+          vault.get("global", "X_ACCESS_TOKEN"),
+          vault.get("global", "X_REFRESH_TOKEN"),
+          vault.get("global", "X_TOKEN_EXPIRES_AT"),
+        ]);
+
+        console.log("\n📊 X (Twitter) auth status\n");
+        console.log(`  Access token:  ${accessToken ? "✅ stored" : "❌ not found"}`);
+        console.log(`  Refresh token: ${refreshToken ? "✅ stored" : "❌ not found"}`);
+        if (expiresAt) {
+          const expiresMs = parseInt(expiresAt, 10);
+          const msLeft = expiresMs - Date.now();
+          const minsLeft = Math.round(msLeft / 60_000);
+          console.log(`  Expires:       ${new Date(expiresMs).toLocaleString()} (${minsLeft > 0 ? `${minsLeft} min` : "EXPIRED"})`);
+        } else {
+          console.log(`  Expires:       unknown`);
+        }
+        console.log();
+        break;
+      }
+
+      if (sub === "revoke") {
+        const vault = new Vault();
+        await Promise.all([
+          vault.delete("global", "X_ACCESS_TOKEN").catch(() => {}),
+          vault.delete("global", "X_REFRESH_TOKEN").catch(() => {}),
+          vault.delete("global", "X_TOKEN_EXPIRES_AT").catch(() => {}),
+        ]);
+        console.log("✅ X tokens removed from vault.");
+        break;
+      }
+
+      if (sub === "test-fetch") {
+        const { getValidToken } = await import("./x-auth.js");
+        const vault = new Vault();
+
+        if (!Vault.isAvailable()) {
+          console.error("❌ Vault not available — MAME_MASTER_KEY not set");
+          process.exit(1);
+        }
+
+        console.log("Fetching X token...");
+        const token = await getValidToken(vault);
+
+        console.log("Fetching authenticated user...");
+        const meRes = await fetch("https://api.x.com/2/users/me?user.fields=id,username,name", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!meRes.ok) {
+          console.error(`❌ /users/me failed (${meRes.status}): ${await meRes.text()}`);
+          process.exit(1);
+        }
+        const me = (await meRes.json()) as { data: { id: string; username: string; name: string } };
+        console.log(`\nAuthenticated as: @${me.data.username} (${me.data.name})\nUser ID: ${me.data.id}\n`);
+
+        console.log("Fetching 5 bookmarks...");
+        const bmRes = await fetch(
+          `https://api.x.com/2/users/${me.data.id}/bookmarks?max_results=5&tweet.fields=created_at,entities,text`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!bmRes.ok) {
+          console.error(`❌ /bookmarks failed (${bmRes.status}): ${await bmRes.text()}`);
+          process.exit(1);
+        }
+        const bm = await bmRes.json();
+        console.log(JSON.stringify(bm, null, 2));
+        break;
+      }
+
+      console.log(`Usage:
+  mame x auth           Complete OAuth 2.0 PKCE flow (Mame must be running)
+  mame x status         Show stored token status and expiry
+  mame x revoke         Delete all stored X tokens
+  mame x test-fetch     Fetch 5 bookmarks and print raw JSON`);
+      break;
+    }
+
     case "cost": {
       console.log("Cost reporting not yet implemented.");
       console.log("Track API usage via your provider's dashboard:");
@@ -428,6 +569,11 @@ Usage:
 
   mame cost report               API cost breakdown
   mame doctor                    Full health check
+
+  mame x auth                    X OAuth 2.0 PKCE flow (Mame must be running)
+  mame x status                  Show X token status and expiry
+  mame x revoke                  Remove stored X tokens
+  mame x test-fetch              Fetch 5 bookmarks and print raw JSON
 `);
       break;
   }
