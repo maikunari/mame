@@ -78,6 +78,7 @@ export interface ArchivedBookmark {
   folder: string | null;
   ingested_at: string;
   article_excerpt: string | null;
+  hero_image: string | null;
 }
 
 let dbInstance: Database.Database | null = null;
@@ -98,11 +99,21 @@ function getDb(): Database.Database {
       saved_at TEXT,
       folder TEXT,
       ingested_at TEXT NOT NULL,
-      article_excerpt TEXT
+      article_excerpt TEXT,
+      hero_image TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_bookmarks_saved_at ON bookmarks(saved_at);
     CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder);
   `);
+
+  // Idempotent migration: earlier archives don't have hero_image. Add the
+  // column if missing — ignore the error if it already exists.
+  try {
+    db.exec("ALTER TABLE bookmarks ADD COLUMN hero_image TEXT");
+  } catch (err) {
+    // column already exists — expected on fresh installs, ignore
+  }
+
   dbInstance = db;
   return db;
 }
@@ -111,13 +122,14 @@ export function upsertArchive(items: ArchivedBookmark[]): { inserted: number; up
   if (items.length === 0) return { inserted: 0, updated: 0 };
   const db = getDb();
   const insert = db.prepare(`
-    INSERT INTO bookmarks (id, text, source_url, linked_url, linked_title, linked_description, saved_at, folder, ingested_at, article_excerpt)
-    VALUES (@id, @text, @source_url, @linked_url, @linked_title, @linked_description, @saved_at, @folder, @ingested_at, @article_excerpt)
+    INSERT INTO bookmarks (id, text, source_url, linked_url, linked_title, linked_description, saved_at, folder, ingested_at, article_excerpt, hero_image)
+    VALUES (@id, @text, @source_url, @linked_url, @linked_title, @linked_description, @saved_at, @folder, @ingested_at, @article_excerpt, @hero_image)
     ON CONFLICT(id) DO UPDATE SET
       folder = COALESCE(excluded.folder, folder),
       linked_title = COALESCE(excluded.linked_title, linked_title),
       linked_description = COALESCE(excluded.linked_description, linked_description),
-      article_excerpt = COALESCE(excluded.article_excerpt, article_excerpt)
+      article_excerpt = COALESCE(excluded.article_excerpt, article_excerpt),
+      hero_image = COALESCE(excluded.hero_image, hero_image)
   `);
 
   let inserted = 0;
@@ -161,7 +173,7 @@ export function pickOldGoldCandidates(
 
   const stmt = db.prepare(`
     SELECT id, text, source_url, linked_url, linked_title, linked_description,
-           saved_at, folder, ingested_at, article_excerpt
+           saved_at, folder, ingested_at, article_excerpt, hero_image
     FROM bookmarks
     WHERE saved_at IS NOT NULL
       AND saved_at < ?

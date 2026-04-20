@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{masthead.title}} — Issue №{{issueNumber}} · {{masthead.dateRange}}</title>
+<meta name="description" content="{{signal}}">
+<meta property="og:title" content="{{masthead.title}} №{{issueNumber}}">
+<meta property="og:description" content="{{signal}}">
+<meta name="theme-color" content="#f7f1e3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<article class="issue">
+
+  <header class="masthead">
+    <p class="dateline">{{masthead.fromLocation}} · {{masthead.dateRange}}</p>
+    <h1 class="title"><span class="ink">d</span><span class="ai">AI</span><span class="ink">ly digest</span></h1>
+    <p class="issue-meta">
+      <span>Issue №{{issueNumber}}</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span>Vol. {{volume}}</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span>compiled in {{masthead.runtime}}</span>
+    </p>
+  </header>
+
+  <nav class="toc" aria-label="Contents">
+    <span class="toc-label">Inside</span>
+    {{#each sections}}
+    <a class="toc-item" href="#{{slug}}">
+      <span class="toc-num">{{number}}</span>
+      <span class="toc-title">{{title}}</span>
+    </a>
+    {{/each}}
+    {{#if oldGold}}
+    <a class="toc-item toc-item-gold" href="#old-gold">
+      <span class="toc-num">✦</span>
+      <span class="toc-title">Old Gold</span>
+    </a>
+    {{/if}}
+  </nav>
+
+  <section class="signal" aria-label="Today's signal">
+    <p class="signal-mark" aria-hidden="true">☞</p>
+    <p class="signal-text">{{signal}}</p>
+  </section>
+
+  {{#each sections}}
+  <section class="dispatch" id="{{slug}}">
+    <header class="dispatch-header">
+      <span class="dispatch-number" aria-hidden="true">{{number}}</span>
+      <div class="dispatch-titling">
+        <h2 class="dispatch-title">{{title}}</h2>
+        {{#if subtitle}}<p class="dispatch-subtitle">{{subtitle}}</p>{{/if}}
+      </div>
+    </header>
+
+    <ol class="items">
+      {{#each items}}
+      <li class="item">
+        {{#if heroImage}}
+        <figure class="item-hero">
+          <img src="{{heroImage}}" alt="" loading="lazy" decoding="async" onerror="this.closest('.item-hero').style.display='none'">
+        </figure>
+        {{/if}}
+
+        {{#if linkedTitle}}
+        <h3 class="item-title">
+          <a href="{{linkedUrl}}" rel="noopener">{{linkedTitle}}</a>
+        </h3>
+        {{/if}}
+
+        <p class="item-summary">{{summary}}</p>
+
+        {{#if whyItMatters}}
+        <p class="item-why">
+          <span class="item-why-label">Why it matters</span><span class="item-why-text">{{whyItMatters}}</span>
+        </p>
+        {{/if}}
+
+        <p class="item-source">
+          <a href="{{sourceUrl}}" rel="noopener">via X</a>
+          {{#if savedAt}}<time class="item-source-time" datetime="{{savedAt}}">{{savedAt}}</time>{{/if}}
+        </p>
+      </li>
+      {{/each}}
+    </ol>
+  </section>
+  {{/each}}
+
+  {{#if oldGold}}
+  <section class="dispatch dispatch-gold" id="old-gold">
+    <header class="dispatch-header">
+      <span class="dispatch-number dispatch-number-gold" aria-hidden="true">✦</span>
+      <div class="dispatch-titling">
+        <h2 class="dispatch-title">Old Gold</h2>
+        <p class="dispatch-subtitle">From the archive — earlier saves resurfaced because they speak to today</p>
+      </div>
+    </header>
+
+    <ol class="items">
+      {{#each oldGold}}
+      <li class="item item-gold">
+        {{#if heroImage}}
+        <figure class="item-hero">
+          <img src="{{heroImage}}" alt="" loading="lazy" decoding="async" onerror="this.closest('.item-hero').style.display='none'">
+        </figure>
+        {{/if}}
+
+        {{#if linkedTitle}}
+        <h3 class="item-title">
+          <a href="{{linkedUrl}}" rel="noopener">{{linkedTitle}}</a>
+        </h3>
+        {{/if}}
+
+        <p class="item-summary">{{summary}}</p>
+
+        {{#if resurfaceReason}}
+        <aside class="item-resurface" aria-label="Resurface reason">
+          <span class="item-resurface-mark" aria-hidden="true">↺</span>
+          <span class="item-resurface-text">{{resurfaceReason}}</span>
+        </aside>
+        {{/if}}
+
+        <p class="item-source">
+          <a href="{{sourceUrl}}" rel="noopener">via X</a>
+          <time class="item-source-time" datetime="{{savedAt}}">saved {{daysSinceSaved}} days ago</time>
+        </p>
+      </li>
+      {{/each}}
+    </ol>
+  </section>
+  {{/if}}
+
+  <footer class="colophon">
+    <hr class="colophon-rule" aria-hidden="true">
+    <p class="colophon-line">
+      <span>{{stats.savedToday}} saved today</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span>{{stats.totalProcessed}} in archive</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span>top: {{stats.topCategory}}</span>
+    </p>
+    <p class="colophon-line colophon-credit">
+      Compiled by <strong>Mame</strong> in {{masthead.runtime}} · Kamakura, Japan
+    </p>
+  </footer>
+
+</article>
+
+</body>
+</html>

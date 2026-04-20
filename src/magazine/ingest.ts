@@ -53,6 +53,9 @@ export interface IngestRecord {
   savedAt: string | null;
   folder: string | null;
   articleExcerpt: string | null;
+  /** OG/twitter image scraped from the linked article, or the tweet's
+   * own media attachment as a fallback. Null when neither is available. */
+  heroImage: string | null;
 }
 
 export interface IngestResult {
@@ -89,7 +92,8 @@ export async function runIngest(date?: string): Promise<IngestResult> {
     log.warn({ err: String(err) }, "folders endpoint failed (Premium feature?) — falling back to flat stream only");
   }
 
-  const collected = new Map<string, FormattedBookmark & { folder: string | null }>();
+  type Collected = FormattedBookmark & { folder: string | null };
+  const collected = new Map<string, Collected>();
   const byFolder: Record<string, number> = {};
   let totalScanned = 0;
 
@@ -117,11 +121,13 @@ export async function runIngest(date?: string): Promise<IngestResult> {
 
   log.info({ collected: collected.size, totalScanned }, "bookmark walk complete");
 
-  // Resolve linked URLs
+  // Resolve linked URLs (excerpt + og:image) in parallel
   const all = [...collected.values()];
   const records: IngestRecord[] = [];
   await mapWithConcurrency(all, FETCH_CONCURRENCY, async (b) => {
-    const excerpt = b.linkedUrl ? await fetchArticleExcerpt(b.linkedUrl) : null;
+    const fetched = b.linkedUrl ? await fetchArticlePayload(b.linkedUrl) : null;
+    // Prefer the article's og:image; fall back to tweet media attachment.
+    const heroImage = fetched?.image ?? b.tweetImage ?? null;
     records.push({
       id: b.id,
       source: "x",
@@ -132,7 +138,8 @@ export async function runIngest(date?: string): Promise<IngestResult> {
       linkedDescription: b.linkedDescription,
       savedAt: b.savedAt,
       folder: b.folder,
-      articleExcerpt: excerpt,
+      articleExcerpt: fetched?.excerpt ?? null,
+      heroImage,
     });
   });
 
@@ -152,6 +159,7 @@ export async function runIngest(date?: string): Promise<IngestResult> {
       folder: r.folder,
       ingested_at: ingestedAt,
       article_excerpt: r.articleExcerpt,
+      hero_image: r.heroImage,
     }));
     const { inserted, updated } = upsertArchive(archiveRows);
     log.info({ inserted, updated }, "archive upserted");
@@ -199,7 +207,7 @@ async function walkFolder(
       if (stopAtId && compareSnowflake(item.id, stopAtId) <= 0) {
         return { count, scanned };
       }
-      onItem(formatBookmark(item));
+      onItem(formatBookmark(item, page.media));
       count++;
     }
     nextToken = page.nextToken;
@@ -227,7 +235,7 @@ async function walkFlat(
       if (stopAtId && compareSnowflake(item.id, stopAtId) <= 0) {
         return scanned;
       }
-      onItem(formatBookmark(item));
+      onItem(formatBookmark(item, page.media));
     }
     nextToken = page.nextToken;
     pages++;
@@ -236,11 +244,17 @@ async function walkFlat(
 }
 
 // ---------------------------------------------------------------------------
-// Article fetch — plain HTTP + HTML strip. Skips on timeout/error and lets
-// the digest fall back to the bookmark text + linked title.
+// Article fetch — plain HTTP. Returns both a stripped excerpt (for the LLM
+// summarizer) and an og:image URL (for the magazine hero). Skips on
+// timeout/error and lets the digest fall back to text + tweet media.
 // ---------------------------------------------------------------------------
 
-async function fetchArticleExcerpt(url: string): Promise<string | null> {
+interface ArticlePayload {
+  excerpt: string | null;
+  image: string | null;
+}
+
+async function fetchArticlePayload(url: string): Promise<ArticlePayload> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -250,11 +264,44 @@ async function fetchArticleExcerpt(url: string): Promise<string | null> {
       redirect: "follow",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { excerpt: null, image: null };
     const html = await res.text();
-    return stripHtml(html).slice(0, 4000);
+    const image = extractOgImage(html, url);
+    const excerpt = stripHtml(html).slice(0, 4000);
+    return { excerpt, image };
   } catch (err) {
     log.debug({ url, err: String(err) }, "article fetch failed");
+    return { excerpt: null, image: null };
+  }
+}
+
+/**
+ * Pull og:image / twitter:image / link rel=image_src from HTML head, in
+ * that order of preference. Resolves relative URLs against pageUrl.
+ */
+function extractOgImage(html: string, pageUrl: string): string | null {
+  // Only look at the first ~16kb — metatags live in <head>
+  const head = html.slice(0, 16_384);
+  const patterns: RegExp[] = [
+    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+    /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i,
+  ];
+  for (const rx of patterns) {
+    const m = head.match(rx);
+    if (m?.[1]) return resolveUrl(m[1], pageUrl);
+  }
+  return null;
+}
+
+function resolveUrl(candidate: string, base: string): string | null {
+  try {
+    const trimmed = candidate.trim();
+    if (!trimmed) return null;
+    return new URL(trimmed, base).toString();
+  } catch {
     return null;
   }
 }

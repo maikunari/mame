@@ -15,6 +15,9 @@ export interface XBookmarkRaw {
   text: string;
   author_id?: string;
   created_at?: string;
+  attachments?: {
+    media_keys?: string[];
+  };
   entities?: {
     urls?: Array<{
       url?: string;
@@ -28,9 +31,22 @@ export interface XBookmarkRaw {
   };
 }
 
+export interface XMedia {
+  media_key: string;
+  type: string;                  // "photo" | "video" | "animated_gif"
+  url?: string;                  // photo url
+  preview_image_url?: string;    // video/gif preview
+  width?: number;
+  height?: number;
+  alt_text?: string;
+}
+
 export interface XApiResponse<T> {
   data?: T;
   meta?: { next_token?: string; result_count?: number };
+  includes?: {
+    media?: XMedia[];
+  };
 }
 
 export interface XFolder {
@@ -47,6 +63,8 @@ export interface FormattedBookmark {
   linkedTitle: string | null;
   linkedDescription: string | null;
   savedAt: string | null;
+  /** First photo/video-preview URL attached to the tweet, if any. */
+  tweetImage: string | null;
 }
 
 export async function xFetch<T = unknown>(urlPath: string, token: string): Promise<T> {
@@ -86,18 +104,35 @@ interface ListBookmarksOpts {
   paginationToken?: string;
 }
 
+const TWEET_FIELDS = "created_at,entities,author_id,text,attachments";
+const MEDIA_FIELDS = "url,preview_image_url,type,width,height,alt_text";
+
+export type PagedBookmarks = {
+  items: XBookmarkRaw[];
+  media: Map<string, XMedia>;
+  nextToken: string | null;
+};
+
+function indexMedia(items: XMedia[] | undefined): Map<string, XMedia> {
+  const m = new Map<string, XMedia>();
+  for (const item of items ?? []) m.set(item.media_key, item);
+  return m;
+}
+
 /**
- * Fetch one page of bookmarks. Returns raw items + a next_token for pagination.
- * Bookmarks are returned newest-first.
+ * Fetch one page of bookmarks. Returns raw items + an indexed media map
+ * (keyed by media_key) + a next_token for pagination. Newest-first.
  */
 export async function listBookmarksPage(
   userId: string,
   token: string,
   opts: ListBookmarksOpts = {}
-): Promise<{ items: XBookmarkRaw[]; nextToken: string | null }> {
+): Promise<PagedBookmarks> {
   const params = new URLSearchParams({
     max_results: String(opts.limit ?? 100),
-    "tweet.fields": "created_at,entities,author_id,text",
+    "tweet.fields": TWEET_FIELDS,
+    expansions: "attachments.media_keys",
+    "media.fields": MEDIA_FIELDS,
   });
   if (opts.paginationToken) params.set("pagination_token", opts.paginationToken);
 
@@ -105,7 +140,11 @@ export async function listBookmarksPage(
     `/users/${userId}/bookmarks?${params}`,
     token
   );
-  return { items: data.data ?? [], nextToken: data.meta?.next_token ?? null };
+  return {
+    items: data.data ?? [],
+    media: indexMedia(data.includes?.media),
+    nextToken: data.meta?.next_token ?? null,
+  };
 }
 
 /**
@@ -116,10 +155,12 @@ export async function listFolderBookmarksPage(
   folderId: string,
   token: string,
   opts: ListBookmarksOpts = {}
-): Promise<{ items: XBookmarkRaw[]; nextToken: string | null }> {
+): Promise<PagedBookmarks> {
   const params = new URLSearchParams({
     max_results: String(opts.limit ?? 100),
-    "tweet.fields": "created_at,entities,author_id,text",
+    "tweet.fields": TWEET_FIELDS,
+    expansions: "attachments.media_keys",
+    "media.fields": MEDIA_FIELDS,
   });
   if (opts.paginationToken) params.set("pagination_token", opts.paginationToken);
 
@@ -127,7 +168,11 @@ export async function listFolderBookmarksPage(
     `/users/${userId}/bookmarks/folders/${folderId}/bookmarks?${params}`,
     token
   );
-  return { items: data.data ?? [], nextToken: data.meta?.next_token ?? null };
+  return {
+    items: data.data ?? [],
+    media: indexMedia(data.includes?.media),
+    nextToken: data.meta?.next_token ?? null,
+  };
 }
 
 /**
@@ -150,7 +195,25 @@ function pickArticleUrl(urls: NonNullable<XBookmarkRaw["entities"]>["urls"] = []
   return null;
 }
 
-export function formatBookmark(item: XBookmarkRaw): FormattedBookmark {
+function pickTweetImage(
+  item: XBookmarkRaw,
+  mediaIndex: Map<string, XMedia> | undefined
+): string | null {
+  if (!mediaIndex || !item.attachments?.media_keys) return null;
+  for (const key of item.attachments.media_keys) {
+    const m = mediaIndex.get(key);
+    if (!m) continue;
+    // photos have .url; videos/gifs have .preview_image_url
+    const imageUrl = m.url ?? m.preview_image_url;
+    if (imageUrl) return imageUrl;
+  }
+  return null;
+}
+
+export function formatBookmark(
+  item: XBookmarkRaw,
+  mediaIndex?: Map<string, XMedia>
+): FormattedBookmark {
   const article = pickArticleUrl(item.entities?.urls);
   return {
     id: item.id,
@@ -160,5 +223,6 @@ export function formatBookmark(item: XBookmarkRaw): FormattedBookmark {
     linkedTitle: article?.title ?? null,
     linkedDescription: article?.description ?? null,
     savedAt: item.created_at ?? null,
+    tweetImage: pickTweetImage(item, mediaIndex),
   };
 }

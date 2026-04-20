@@ -59,8 +59,8 @@ registerTool({
     }
 
     if (action === "list") {
-      const { items, nextToken } = await listBookmarksPage(me.id, token, { limit });
-      const bookmarks = items.map(formatBookmark);
+      const { items, media, nextToken } = await listBookmarksPage(me.id, token, { limit });
+      const bookmarks = items.map((i) => formatBookmark(i, media));
       log.info({ count: bookmarks.length, username: me.username }, "bookmarks_fetch list");
       return {
         userId: me.id,
@@ -83,8 +83,8 @@ registerTool({
         };
       }
 
-      const { items, nextToken } = await listFolderBookmarksPage(me.id, match.id, token, { limit });
-      const bookmarks = items.map(formatBookmark);
+      const { items, media, nextToken } = await listFolderBookmarksPage(me.id, match.id, token, { limit });
+      const bookmarks = items.map((i) => formatBookmark(i, media));
       log.info({ count: bookmarks.length, folder: match.name }, "bookmarks_fetch by_folder");
       return {
         userId: me.id,

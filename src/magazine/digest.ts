@@ -54,6 +54,7 @@ export interface IssueItem {
   sourceUrl: string;
   linkedUrl: string | null;
   linkedTitle: string | null;
+  heroImage: string | null;
   savedAt: string | null;
   summary: string;
   whyItMatters: string;
@@ -74,6 +75,7 @@ export interface IssueOldGold {
   sourceUrl: string;
   linkedUrl: string | null;
   linkedTitle: string | null;
+  heroImage: string | null;
   savedAt: string | null;
   summary: string;
   resurfaceReason: string;
@@ -432,6 +434,7 @@ function groupIntoSections(items: SummarizedItem[]): IssueSection[] {
       sourceUrl: it.sourceUrl,
       linkedUrl: it.linkedUrl,
       linkedTitle: it.linkedTitle,
+      heroImage: it.heroImage,
       savedAt: it.savedAt,
       summary: it.summary,
       whyItMatters: it.whyItMatters,
@@ -515,6 +518,7 @@ Pick exactly ${OLD_GOLD_TARGET} with the strongest thematic ties to today.`;
       sourceUrl: c.source_url,
       linkedUrl: c.linked_url,
       linkedTitle: c.linked_title,
+      heroImage: c.hero_image,
       savedAt: c.saved_at,
       summary: oldGoldSummary(c),
       resurfaceReason: pick.resurfaceReason,
