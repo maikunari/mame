@@ -21,9 +21,6 @@ const log = childLogger("magazine:render");
 
 const TEMPLATE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "template");
 
-// Stock Handlebars lacks an equality helper — the template uses {{#if (eq a b)}}.
-Handlebars.registerHelper("eq", (a: unknown, b: unknown) => a === b);
-
 export interface RenderResult {
   path: string;
   latestPath: string;
@@ -47,13 +44,24 @@ export async function renderIssue(date?: string): Promise<RenderResult> {
 
   // Inline CSS: replace the <link rel="stylesheet" href="styles.css"> tag with
   // a <style> block. Google Fonts <link> tags remain — the font loading still
-  // needs the external request.
-  const inlined = templateSrc.replace(
-    /<link[^>]+href=["']styles\.css["'][^>]*\/?>/,
-    `<style>\n${cssSrc}\n</style>`
-  );
+  // needs the external request. We assert the replacement happened so a
+  // template edit that drops/renames the tag fails loudly instead of
+  // silently shipping an unstyled page.
+  const cssLinkRe = /<link[^>]+href=["']styles\.css["'][^>]*\/?>/;
+  if (!cssLinkRe.test(templateSrc)) {
+    throw new Error(
+      "render: template is missing <link ... href=\"styles.css\"> — CSS cannot be inlined. " +
+        "Restore the styles.css link tag in src/magazine/template/index.html."
+    );
+  }
+  const inlined = templateSrc.replace(cssLinkRe, `<style>\n${cssSrc}\n</style>`);
 
-  const template = Handlebars.compile(inlined);
+  // Stock Handlebars lacks an equality helper — the template uses {{#if (eq a b)}}.
+  // Registered per-render (not at module load) so we don't mutate the global
+  // Handlebars singleton from import side effects.
+  const hb = Handlebars.create();
+  hb.registerHelper("eq", (a: unknown, b: unknown) => a === b);
+  const template = hb.compile(inlined);
   const html = template(issue);
 
   fs.mkdirSync(PUBLIC_DIR, { recursive: true });
@@ -98,7 +106,11 @@ export function listRenderedIssues(): IssueSummary[] {
           signal: iss.signal,
           savedToday: iss.stats.savedToday,
         };
-      } catch {
+      } catch (err) {
+        log.warn(
+          { date, jsonPath, err: err instanceof Error ? err.message : String(err) },
+          "listRenderedIssues: failed to read issue JSON for rendered HTML"
+        );
         return { date, issueNumber: null, signal: null, savedToday: null };
       }
     });

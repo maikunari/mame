@@ -435,6 +435,13 @@ export class Gateway {
     // look for a missing PUBLIC_DIR/index.html and fall through to 404.
     // Both paths share one handler because Express's default non-strict routing
     // makes app.get("/magazine") match "/magazine/" too, causing a redirect loop.
+    const escapeHtml = (s: string): string =>
+      s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
     this.webhookServer.get(["/magazine", "/magazine/"], (_req, res) => {
       const issues = listRenderedIssues();
       if (issues.length === 0) {
@@ -453,7 +460,7 @@ export class Gateway {
             `<tr>` +
             `<td><a href="/magazine/${iss.date}.html">#${iss.issueNumber ?? "—"}</a></td>` +
             `<td>${iss.date}</td>` +
-            `<td>${iss.signal ? iss.signal.replace(/&/g, "&amp;").replace(/</g, "&lt;") : "—"}</td>` +
+            `<td>${iss.signal ? escapeHtml(iss.signal) : "—"}</td>` +
             `<td style="text-align:right">${iss.savedToday ?? "—"}</td>` +
             `</tr>`
         )

@@ -60,6 +60,17 @@ const ModelsConfigSchema = z.object({
   complex: z.string().optional(),
 });
 
+const MagazineConfigSchema = z
+  .object({
+    /** Base URL (no trailing slash) used for Discord teaser links, e.g.
+     *  "https://dailydigest.example.com". When omitted, notifications fall
+     *  back to a path-only link and log a warning. */
+    publicUrl: z.string().url().optional(),
+    /** Cron expression for the daily digest job. */
+    cron: z.string().default("0 6 * * *"),
+  })
+  .default({});
+
 const MameConfigSchema = z.object({
   projects: z.record(z.string(), ProjectConfigSchema).default({}),
   discord: DiscordConfigSchema.optional(),
@@ -68,6 +79,7 @@ const MameConfigSchema = z.object({
   webhook: WebhookConfigSchema.optional(),
   agentmail: AgentMailConfigSchema.optional(),
   models: ModelsConfigSchema.optional(),
+  magazine: MagazineConfigSchema,
   timezone: z.string().default("Asia/Tokyo"),
 });
 
@@ -104,6 +116,7 @@ export type SignalConfig = z.infer<typeof SignalConfigSchema>;
 export type WebhookConfig = z.infer<typeof WebhookConfigSchema>;
 export type AgentMailConfig = z.infer<typeof AgentMailConfigSchema>;
 export type ModelsConfig = z.infer<typeof ModelsConfigSchema>;
+export type MagazineConfig = z.infer<typeof MagazineConfigSchema>;
 export type MameConfig = z.infer<typeof MameConfigSchema>;
 export type PersonaConfig = z.infer<typeof PersonaConfigSchema>;
 
@@ -161,4 +174,40 @@ export function loadSoul(soulFile: string): string {
     throw new Error(`Soul file not found: ${soulPath}`);
   }
   return fs.readFileSync(soulPath, "utf-8");
+}
+
+/**
+ * Resolve the persona name to use for the magazine pipeline.
+ *
+ * Priority: explicit arg → $MAME_MAGAZINE_PERSONA → mike.yml → default.yml →
+ * the single persona file if exactly one exists. Throws a human-readable
+ * error for zero or multiple candidates so the CLI can print and exit.
+ *
+ * The magazine pipeline is the only caller today; both the `magazine` and
+ * `heartbeat magazine` subcommands go through this to stay in lockstep.
+ */
+export function resolveMagazinePersona(explicit?: string): string {
+  const personasDir = path.join(MAME_HOME, "personas");
+  if (explicit) return explicit;
+
+  const envPersona = process.env.MAME_MAGAZINE_PERSONA;
+  if (envPersona && fs.existsSync(path.join(personasDir, `${envPersona}.yml`))) {
+    return envPersona;
+  }
+  if (fs.existsSync(path.join(personasDir, "mike.yml"))) return "mike";
+  if (fs.existsSync(path.join(personasDir, "default.yml"))) return "default";
+
+  if (!fs.existsSync(personasDir)) {
+    throw new Error(`Personas directory not found: ${personasDir}`);
+  }
+  const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
+  if (files.length === 1) return files[0].replace(".yml", "");
+  if (files.length === 0) {
+    throw new Error(`No personas found in ${personasDir}`);
+  }
+  throw new Error(
+    `Multiple personas found: ${files
+      .map((f) => f.replace(".yml", ""))
+      .join(", ")}. Specify one with --persona <name> or set MAME_MAGAZINE_PERSONA.`
+  );
 }

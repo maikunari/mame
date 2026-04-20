@@ -282,18 +282,19 @@ export class HeartbeatScheduler {
 
   private startMagazineJob(): void {
     const timezone = this.config.timezone || "Asia/Tokyo";
-    const job = new Cron("0 6 * * *", { timezone }, async () => {
-      log.info({ timezone }, "Daily magazine job firing");
+    const cron = this.config.magazine.cron;
+    const job = new Cron(cron, { timezone }, async () => {
+      log.info({ timezone, cron }, "Daily magazine job firing");
       try {
         await this.runMagazinePipeline();
       } catch (err) {
+        log.error({ err }, "Daily magazine job failed");
         const msg = err instanceof Error ? err.message : String(err);
-        log.error({ err: msg }, "Daily magazine job failed");
         await this.notify(undefined, `❌ dAIly digest failed: ${msg}`);
       }
     });
     this.jobs.push(job);
-    log.info({ timezone }, "Daily magazine job registered (06:00)");
+    log.info({ timezone, cron }, "Daily magazine job registered");
   }
 
   private async runMagazinePipeline(): Promise<void> {
@@ -319,7 +320,14 @@ export class HeartbeatScheduler {
     await renderIssue(date);
     log.info({ date }, "Magazine render done");
 
-    const url = `https://dailydigest.sonicpixel.io/magazine/${date}.html`;
+    const base = this.config.magazine.publicUrl;
+    if (!base) {
+      log.warn(
+        "config.magazine.publicUrl is unset — Discord link will be path-only. " +
+          "Set magazine.publicUrl in config.yml to the tunnel hostname."
+      );
+    }
+    const url = base ? `${base.replace(/\/$/, "")}/magazine/${date}.html` : `/magazine/${date}.html`;
     const msg =
       `📰 **dAIly digest #${digest.issue.issueNumber} is out** — *"${digest.issue.signal}"*\n` +
       `→ ${url}`;
@@ -332,8 +340,8 @@ export class HeartbeatScheduler {
     try {
       await this.runMagazinePipeline();
     } catch (err) {
+      log.error({ err }, "Magazine pipeline failed");
       const msg = err instanceof Error ? err.message : String(err);
-      log.error({ err: msg }, "Magazine pipeline failed");
       await this.notify(undefined, `❌ dAIly digest failed: ${msg}`);
     }
   }

@@ -4,7 +4,7 @@
 import { execSync } from "child_process";
 import crypto from "crypto";
 import { runOnboarding } from "./onboard.js";
-import { MAME_HOME, loadConfig } from "./config.js";
+import { MAME_HOME, loadConfig, resolveMagazinePersona } from "./config.js";
 import { Vault } from "./vault.js";
 import { recall, listMemories, memoryStats, formatMemoryTimestamp } from "./memory.js";
 import { HeartbeatScheduler } from "./heartbeat.js";
@@ -283,25 +283,15 @@ async function main(): Promise<void> {
       } else if (sub === "magazine") {
         // Run the magazine pipeline now (ingest → generate → render → notify).
         // Prints the Discord notification to stdout instead of sending it.
+        const personaFlag = args.includes("--persona")
+          ? args[args.indexOf("--persona") + 1]
+          : undefined;
         let persona: string;
-        if (args.includes("--persona")) {
-          persona = args[args.indexOf("--persona") + 1];
-        } else {
-          const personasDir = path.join(MAME_HOME, "personas");
-          if (fs.existsSync(path.join(personasDir, "mike.yml"))) {
-            persona = "mike";
-          } else if (fs.existsSync(personasDir)) {
-            const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
-            if (files.length === 1) {
-              persona = files[0].replace(".yml", "");
-            } else {
-              console.error("Multiple personas — specify one with --persona <name>");
-              process.exit(1);
-            }
-          } else {
-            console.error("No personas found.");
-            process.exit(1);
-          }
+        try {
+          persona = resolveMagazinePersona(personaFlag);
+        } catch (err) {
+          console.error(err instanceof Error ? err.message : String(err));
+          process.exit(1);
         }
 
         const { loadPersona } = await import("./config.js");
@@ -419,35 +409,14 @@ async function main(): Promise<void> {
         break;
       }
 
-      const personaFlag = args.indexOf("--persona");
+      const personaFlagIdx = args.indexOf("--persona");
+      const explicitPersona = personaFlagIdx >= 0 ? args[personaFlagIdx + 1] : undefined;
       let personaName: string;
-      if (personaFlag >= 0) {
-        personaName = args[personaFlag + 1];
-      } else {
-        // Auto-detect priority: env > mike.yml > default.yml > unique single persona.
-        const personasDir = path.join(MAME_HOME, "personas");
-        const envPersona = process.env.MAME_MAGAZINE_PERSONA;
-        if (envPersona && fs.existsSync(path.join(personasDir, `${envPersona}.yml`))) {
-          personaName = envPersona;
-        } else if (fs.existsSync(path.join(personasDir, "mike.yml"))) {
-          personaName = "mike";
-        } else if (fs.existsSync(path.join(personasDir, "default.yml"))) {
-          personaName = "default";
-        } else if (fs.existsSync(personasDir)) {
-          const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
-          if (files.length === 1) {
-            personaName = files[0].replace(".yml", "");
-          } else if (files.length === 0) {
-            console.error(`No personas found in ${personasDir}`);
-            process.exit(1);
-          } else {
-            console.error(`Multiple personas found: ${files.map((f) => f.replace(".yml", "")).join(", ")}\nSpecify one with --persona <name> or set MAME_MAGAZINE_PERSONA`);
-            process.exit(1);
-          }
-        } else {
-          console.error(`Personas directory not found: ${personasDir}`);
-          process.exit(1);
-        }
+      try {
+        personaName = resolveMagazinePersona(explicitPersona);
+      } catch (err) {
+        console.error(err instanceof Error ? err.message : String(err));
+        process.exit(1);
       }
 
       // Magazine pipeline needs vault secrets (OPENROUTER_API_KEY etc) in env
