@@ -348,6 +348,80 @@ async function main(): Promise<void> {
       break;
     }
 
+    case "magazine": {
+      const sub = args[1];
+      const dateFlag = args.indexOf("--date");
+      const date = dateFlag >= 0 ? args[dateFlag + 1] : undefined;
+      const personaFlag = args.indexOf("--persona");
+      const personaName = personaFlag >= 0 ? args[personaFlag + 1] : "default";
+
+      // Magazine pipeline needs vault secrets (OPENROUTER_API_KEY etc) in env
+      if (Vault.isAvailable()) {
+        const v = new Vault();
+        const globals = await v.getAll("global");
+        for (const [k, val] of Object.entries(globals)) {
+          if (!process.env[k]) process.env[k] = val;
+        }
+      }
+
+      if (sub === "ingest") {
+        const { runIngest } = await import("./magazine/ingest.js");
+        const result = await runIngest(date);
+        console.log(JSON.stringify(result, null, 2));
+        break;
+      }
+
+      if (sub === "generate") {
+        const { generateDailyDigest } = await import("./magazine/digest.js");
+        const result = await generateDailyDigest({ date, personaName });
+        console.log(`✅ Issue #${result.issue.issueNumber} written to ${result.path}`);
+        console.log(`   Sections: ${result.issue.sections.length}`);
+        console.log(`   Items: ${result.issue.sections.reduce((acc, s) => acc + s.items.length, 0)}`);
+        console.log(`   Old Gold: ${result.issue.oldGold.length}`);
+        console.log(`   Signal: "${result.issue.signal}"`);
+        console.log(`   Runtime: ${result.issue.masthead.runtime}`);
+        break;
+      }
+
+      if (sub === "run") {
+        // Combined: ingest then generate. The intended heartbeat path.
+        const { runIngest } = await import("./magazine/ingest.js");
+        const { generateDailyDigest } = await import("./magazine/digest.js");
+        const ingest = await runIngest(date);
+        console.log(`📥 Ingested ${ingest.newCount} new bookmarks (scanned ${ingest.totalScanned})`);
+        if (ingest.newCount === 0) {
+          console.log("Nothing new to digest. Skipping generate.");
+          break;
+        }
+        const digest = await generateDailyDigest({ date, personaName });
+        console.log(`✅ Issue #${digest.issue.issueNumber} → ${digest.path}`);
+        console.log(`   "${digest.issue.signal}"`);
+        break;
+      }
+
+      if (sub === "stats") {
+        const { archiveStats, loadState, MAGAZINE_DIR } = await import("./magazine/state.js");
+        const state = loadState();
+        const arch = archiveStats();
+        console.log(`Magazine stats:`);
+        console.log(`  Home:                  ${MAGAZINE_DIR}`);
+        console.log(`  Archive total:         ${arch.total} bookmarks`);
+        console.log(`  Archive oldest:        ${arch.oldest ?? "(none)"}`);
+        console.log(`  Archive newest:        ${arch.newest ?? "(none)"}`);
+        console.log(`  Last synced bookmark:  ${state.lastSyncedBookmarkId ?? "(none)"}`);
+        console.log(`  Next issue number:     ${state.nextIssueNumber}`);
+        console.log(`  Resurfaced count:      ${Object.keys(state.oldGoldResurfaceLog).length}`);
+        break;
+      }
+
+      console.log(`Usage:
+  mame magazine ingest [--date YYYY-MM-DD]                    Pull new bookmarks → JSONL + archive
+  mame magazine generate [--date YYYY-MM-DD] [--persona name] Build issue JSON from today's JSONL
+  mame magazine run [--date YYYY-MM-DD] [--persona name]      Ingest + generate end-to-end
+  mame magazine stats                                         Show archive + state summary`);
+      break;
+    }
+
     case "x": {
       const sub = args[1];
 
@@ -574,6 +648,11 @@ Usage:
   mame x status                  Show X token status and expiry
   mame x revoke                  Remove stored X tokens
   mame x test-fetch              Fetch 5 bookmarks and print raw JSON
+
+  mame magazine ingest           Pull new X bookmarks into raw JSONL + archive
+  mame magazine generate         Build today's issue JSON from raw JSONL
+  mame magazine run              Ingest + generate end-to-end (the heartbeat path)
+  mame magazine stats            Show archive + state summary
 `);
       break;
   }
