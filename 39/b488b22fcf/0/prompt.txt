@@ -1,0 +1,110 @@
+jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js heartbeat magazine
+unset MAME_MASTER_KEY
+[17:36:56.584] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[17:36:56.611] INFO: Running magazine pipeline now (manual trigger)
+    component: "heartbeat"
+[17:36:56.638] INFO: ingest run starting
+    component: "magazine:ingest"
+    date: "2026-04-20"
+[17:36:56.638] INFO: X access token expiring soon — refreshing
+    component: "x-auth"
+[17:36:56.947] INFO: X tokens stored in vault
+    component: "x-auth"
+    expiresIn: 7200
+[17:36:57.269] INFO: found folders
+    component: "magazine:ingest"
+    folders: [
+      "Claude code",
+      "Design",
+      "Development",
+      "SEO",
+      "Shopify",
+      "Dogs & Animals",
+      "Ai",
+      "OpenClaw",
+      "Marketing",
+      "Security",
+      "crypto",
+      "Study",
+      "FF",
+      "Writing",
+      "Quotes to Remember"
+    ]
+[17:36:57.389] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Claude code"
+    err: "Error: X API error (404): "
+[17:36:57.556] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Design"
+    err: "Error: X API error (404): "
+[17:36:57.674] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Development"
+    err: "Error: X API error (404): "
+[17:36:57.798] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "SEO"
+    err: "Error: X API error (404): "
+[17:36:57.918] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Shopify"
+    err: "Error: X API error (404): "
+[17:36:58.043] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Dogs & Animals"
+    err: "Error: X API error (404): "
+[17:36:58.163] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Ai"
+    err: "Error: X API error (404): "
+[17:36:58.288] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "OpenClaw"
+    err: "Error: X API error (404): "
+[17:36:58.415] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Marketing"
+    err: "Error: X API error (404): "
+[17:36:58.530] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Security"
+    err: "Error: X API error (404): "
+[17:36:58.651] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "crypto"
+    err: "Error: X API error (404): "
+[17:36:58.770] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Study"
+    err: "Error: X API error (404): "
+[17:36:58.896] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "FF"
+    err: "Error: X API error (404): "
+[17:36:59.108] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Writing"
+    err: "Error: X API error (404): "
+[17:36:59.310] WARN: folder walk failed — skipping this folder
+    component: "magazine:ingest"
+    folder: "Quotes to Remember"
+    err: "Error: X API error (404): "
+Error: Persona not found: /home/jerry/.mame/personas/Mame.yml
+[17:36:59.902] INFO: bookmark walk complete
+    component: "magazine:ingest"
+    collected: 2
+    totalScanned: 3
+[17:36:59.906] INFO: archive upserted
+    component: "magazine:ingest"
+    inserted: 2
+    updated: 0
+[17:36:59.906] INFO: Magazine ingest done
+    component: "heartbeat"
+    date: "2026-04-20"
+    newCount: 2
+    total: 3
+jerry@sp-studio:~/Projects/mame$
