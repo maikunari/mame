@@ -357,9 +357,14 @@ async function main(): Promise<void> {
       if (personaFlag >= 0) {
         personaName = args[personaFlag + 1];
       } else {
-        // Auto-detect: prefer "default", else if exactly one persona file exists use it.
+        // Auto-detect priority: env > mike.yml > default.yml > unique single persona.
         const personasDir = path.join(MAME_HOME, "personas");
-        if (fs.existsSync(path.join(personasDir, "default.yml"))) {
+        const envPersona = process.env.MAME_MAGAZINE_PERSONA;
+        if (envPersona && fs.existsSync(path.join(personasDir, `${envPersona}.yml`))) {
+          personaName = envPersona;
+        } else if (fs.existsSync(path.join(personasDir, "mike.yml"))) {
+          personaName = "mike";
+        } else if (fs.existsSync(path.join(personasDir, "default.yml"))) {
           personaName = "default";
         } else if (fs.existsSync(personasDir)) {
           const files = fs.readdirSync(personasDir).filter((f) => f.endsWith(".yml"));
@@ -369,7 +374,7 @@ async function main(): Promise<void> {
             console.error(`No personas found in ${personasDir}`);
             process.exit(1);
           } else {
-            console.error(`Multiple personas found: ${files.map((f) => f.replace(".yml", "")).join(", ")}\nSpecify one with --persona <name>`);
+            console.error(`Multiple personas found: ${files.map((f) => f.replace(".yml", "")).join(", ")}\nSpecify one with --persona <name> or set MAME_MAGAZINE_PERSONA`);
             process.exit(1);
           }
         } else {
