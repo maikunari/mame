@@ -981,3 +981,11 @@ no this font is still too hard to read, let change it - the original font was be
 ---
 
 yeah we need to remove the other places as although that text looks cool its unfortuantely hard to read . questions 1 - same publication, 2 agreed
+
+---
+
+Excellent, all good now
+
+---
+
+actually one further thing - would be great if it was able to pull featured image (if there is one) from the tweet or linked article
