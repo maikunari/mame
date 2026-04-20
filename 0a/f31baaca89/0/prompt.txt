@@ -1,0 +1,153 @@
+jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame && git pull && npm install && npm run build && sudo systemctl restart mame@mike
+remote: Enumerating objects: 51, done.
+remote: Counting objects: 100% (51/51), done.
+remote: Compressing objects: 100% (19/19), done.
+remote: Total 37 (delta 16), reused 37 (delta 16), pack-reused 0 (from 0)
+Unpacking objects: 100% (37/37), 1.91 MiB | 7.30 MiB/s, done.
+From https://github.com/maikunari/mame
+   2a8acf5..6a96f7f  main                  -> origin/main
+   8f45df6..2e1c2a8  entire/checkpoints/v1 -> origin/entire/checkpoints/v1
+Updating 2a8acf5..6a96f7f
+error: Your local changes to the following files would be overwritten by merge:
+	package-lock.json
+	package.json
+Please commit your changes or stash them before you merge.
+Aborting
+jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine render
+unset MAME_MASTER_KEY
+
+curl http://localhost:3847/magazine/latest.html | head -20
+curl http://localhost:3847/magazine/
+Usage:
+  mame magazine ingest [--date YYYY-MM-DD]                    Pull new bookmarks → JSONL + archive
+  mame magazine generate [--date YYYY-MM-DD] [--persona name] Build issue JSON from today's JSONL
+  mame magazine run [--date YYYY-MM-DD] [--persona name]      Ingest + generate end-to-end
+  mame magazine stats                                         Show archive + state summary
+[16:20:31.456] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   159  100   159    0     0  77297      0 --:--:-- --:--:-- --:--:-- 79500
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /magazine/latest.html</pre>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /magazine/</pre>
+</body>
+</html>
+jerry@sp-studio:~/Projects/mame$
+
+---
+
+i might have run it twice jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame && git stash && git pull && npm install && npm run build && sudo systemctl restart mame@mike
+Saved working directory and index state WIP on main: 2a8acf5 feat(magazine): Phase 3 — magazine-front homepage layout
+Updating 2a8acf5..6a96f7f
+Fast-forward
+ package-lock.json      |  60 +++++++++++++++++++++++++++++++++++++++++++++-
+ package.json           |   4 +++-
+ src/cli.ts             |  53 +++++++++++++++++++++++++---------------
+ src/gateway.ts         |  60 ++++++++++++++++++++++++++++++++++++++++++++++
+ src/magazine/render.ts | 105 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 261 insertions(+), 21 deletions(-)
+ create mode 100644 src/magazine/render.ts
+npm warn deprecated @types/handlebars@4.1.0: This is a stub types definition. handlebars provides its own type definitions, so you do not need this installed.
+
+added 6 packages, removed 4 packages, changed 1 package, and audited 508 packages in 1s
+
+78 packages are looking for funding
+  run `npm fund` for details
+
+13 vulnerabilities (8 moderate, 1 high, 4 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> mame@0.1.2 build
+> tsc && cp -r src/magazine/template dist/magazine/template
+
+jerry@sp-studio:~/Projects/mame$ cd ~/Projects/mame && git stash && git pull && npm install && npm run build && sudo systemctl restart mame@mike
+Saved working directory and index state WIP on main: 6a96f7f feat(magazine): Phase 4 — renderer + Express static route + render CLI
+Already up to date.
+
+up to date, audited 508 packages in 3s
+
+78 packages are looking for funding
+  run `npm fund` for details
+
+13 vulnerabilities (8 moderate, 1 high, 4 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> mame@0.1.2 build
+> tsc && cp -r src/magazine/template dist/magazine/template
+
+jerry@sp-studio:~/Projects/mame$
+
+---
+
+jerry@sp-studio:~/Projects/mame$ export MAME_MASTER_KEY=$(sudo systemd-creds decrypt /etc/credstore.encrypted/MAME_MASTER_KEY -)
+node ~/Projects/mame/dist/cli.js magazine render
+unset MAME_MASTER_KEY
+
+curl http://localhost:3847/magazine/latest.html | head -20
+curl http://localhost:3847/magazine/
+ Rendered → /home/jerry/.mame/magazine/public/2026-04-20.html
+   Latest  → /home/jerry/.mame/magazine/public/latest.html
+[16:27:37.277] INFO: sqlite-vec loaded
+    component: "memory"
+    version: "v0.1.9"
+[16:27:37.344] INFO: issue rendered
+    component: "magazine:render"
+    path: "/home/jerry/.mame/magazine/public/2026-04-20.html"
+    date: "2026-04-20"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 23085  100 23085    0     0  5027k    <!doctype html>:--:-- --:--:--     0
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dAIly digest — Issue №2 · April 20, 2026</title>
+<meta name="description" content="AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate.">
+<meta property="og:title" content="dAIly digest №2">
+<meta property="og:description" content="AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate.">
+<meta name="theme-color" content="#f7f1e3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+ * dAIly digest — magazine stylesheet
+ *
+ * Editoria l print register layered on Anthropic.com/news's clean
+  * structural foundation. Display: Bodoni Moda (variable optical-size
+0 * didone). Body: Hanken Grotesk (humanist grotesque). Warm cream paper,
+ --:--:-- --:--:-- --:--:-- 5635k
+curl: Failed writing body
+Moved Permanently. Redirecting to /magazine/jerry@sp-studio:~/Projects/mame$
