@@ -29,69 +29,123 @@
     </p>
   </header>
 
-  <nav class="toc" aria-label="Contents">
-    <span class="toc-label">Inside</span>
-    {{#each sections}}
-    <a class="toc-item" href="#{{slug}}">
-      <span class="toc-num">{{number}}</span>
-      <span class="toc-title">{{title}}</span>
-    </a>
-    {{/each}}
-    {{#if oldGold}}
-    <a class="toc-item toc-item-gold" href="#old-gold">
-      <span class="toc-num">✦</span>
-      <span class="toc-title">Old Gold</span>
-    </a>
-    {{/if}}
-  </nav>
-
   <section class="signal" aria-label="Today's signal">
     <p class="signal-mark" aria-hidden="true">☞</p>
     <p class="signal-text">{{signal}}</p>
   </section>
 
-  {{#each sections}}
-  <section class="dispatch" id="{{slug}}">
-    <header class="dispatch-header">
-      <span class="dispatch-number" aria-hidden="true">{{number}}</span>
-      <div class="dispatch-titling">
-        <h2 class="dispatch-title">{{title}}</h2>
-        {{#if subtitle}}<p class="dispatch-subtitle">{{subtitle}}</p>{{/if}}
-      </div>
-    </header>
+  <div class="featured-row">
 
-    <ol class="items">
-      {{#each items}}
-      <li class="item">
-        {{#if heroImage}}
-        <figure class="item-hero">
-          <img src="{{heroImage}}" alt="" loading="lazy" decoding="async" onerror="this.closest('.item-hero').style.display='none'">
-        </figure>
-        {{/if}}
-
+    {{#if featured}}
+    <article class="featured">
+      {{#with featured}}
+      {{#if heroImage}}
+      <figure class="featured-hero">
+        <img src="{{heroImage}}" alt="" loading="eager" decoding="async" onerror="this.closest('.featured-hero').style.display='none'">
+      </figure>
+      {{/if}}
+      <div class="featured-body">
+        <p class="featured-kicker">Today's lead</p>
+        <p class="item-meta">
+          {{#if folder}}
+            {{#if (eq folder "(unfiled)")}}
+            <span class="item-category item-category--unfiled">Unfiled</span>
+            {{else}}
+            <span class="item-category">{{folder}}</span>
+            {{/if}}
+          {{/if}}
+          {{#if savedAt}}<time class="item-date" datetime="{{savedAt}}">{{savedAt}}</time>{{/if}}
+        </p>
         {{#if linkedTitle}}
-        <h3 class="item-title">
+        <h2 class="featured-title">
           <a href="{{linkedUrl}}" rel="noopener">{{linkedTitle}}</a>
-        </h3>
+        </h2>
         {{/if}}
-
-        <p class="item-summary">{{summary}}</p>
-
+        <p class="featured-summary">{{summary}}</p>
         {{#if whyItMatters}}
         <p class="item-why">
           <span class="item-why-label">Why it matters</span><span class="item-why-text">{{whyItMatters}}</span>
         </p>
         {{/if}}
-
         <p class="item-source">
           <a href="{{sourceUrl}}" rel="noopener">via X</a>
-          {{#if savedAt}}<time class="item-source-time" datetime="{{savedAt}}">{{savedAt}}</time>{{/if}}
         </p>
-      </li>
-      {{/each}}
-    </ol>
-  </section>
-  {{/each}}
+      </div>
+      {{/with}}
+    </article>
+    {{/if}}
+
+    {{#if oldGold}}
+    {{#with oldGold.[0]}}
+    <aside class="old-gold-aside" aria-label="Old Gold callback">
+      <p class="old-gold-aside-kicker">
+        <span class="mark" aria-hidden="true">✦</span>
+        <span>Old Gold</span>
+      </p>
+      {{#if linkedTitle}}
+      <h3 class="old-gold-aside-title">
+        <a href="{{linkedUrl}}" rel="noopener">{{linkedTitle}}</a>
+      </h3>
+      {{/if}}
+      <p class="old-gold-aside-summary">{{summary}}</p>
+      {{#if resurfaceReason}}
+      <p class="old-gold-aside-resurface">
+        <span class="mark" aria-hidden="true">↺</span>{{resurfaceReason}}
+      </p>
+      {{/if}}
+      <p class="old-gold-aside-meta">
+        <a href="{{sourceUrl}}" rel="noopener">via X</a>
+        <time datetime="{{savedAt}}">saved {{daysSinceSaved}} days ago</time>
+      </p>
+    </aside>
+    {{/with}}
+    {{/if}}
+
+  </div>
+
+  {{#if rest.length}}
+  <p class="front-meta">
+    <span>{{stats.savedToday}} items</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span>{{masthead.dateRange}}</span>
+  </p>
+
+  <ol class="front-grid">
+    {{#each rest}}
+    <li class="front-item">
+      {{#if heroImage}}
+      <figure class="item-hero">
+        <img src="{{heroImage}}" alt="" loading="lazy" decoding="async" onerror="this.closest('.item-hero').style.display='none'">
+      </figure>
+      {{/if}}
+      <p class="item-meta">
+        {{#if folder}}
+          {{#if (eq folder "(unfiled)")}}
+          <span class="item-category item-category--unfiled">Unfiled</span>
+          {{else}}
+          <span class="item-category">{{folder}}</span>
+          {{/if}}
+        {{/if}}
+        {{#if savedAt}}<time class="item-date" datetime="{{savedAt}}">{{savedAt}}</time>{{/if}}
+      </p>
+      {{#if linkedTitle}}
+      <h3 class="item-title">
+        <a href="{{linkedUrl}}" rel="noopener">{{linkedTitle}}</a>
+      </h3>
+      {{/if}}
+      <p class="item-summary">{{summary}}</p>
+      {{#if whyItMatters}}
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">{{whyItMatters}}</span>
+      </p>
+      {{/if}}
+      <p class="item-source">
+        <a href="{{sourceUrl}}" rel="noopener">via X</a>
+      </p>
+    </li>
+    {{/each}}
+  </ol>
+  {{/if}}
 
   {{#if oldGold}}
   <section class="dispatch dispatch-gold" id="old-gold">

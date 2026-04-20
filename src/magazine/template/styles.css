@@ -7,35 +7,35 @@
  * near-black ink, weathered newsprint-red accent. Why-it-matters runs
  * as a continuation italic with an inline red flag — no zoning.
  *
+ * LAYOUT — magazine front:
+ *   Masthead → Signal epigraph → Featured row (featured + Old Gold aside)
+ *   → Front meta line → Grid (first item spans cols) → Old Gold archive
+ *   pocket → Colophon.
+ *
  * TYPOGRAPHY RULE (load-bearing — read before changing anything):
  *   Bodoni Moda is ONLY used at sizes ≥ 2rem OR as single-glyph
  *   decoration. Didone's thin-thick contrast collapses at smaller
  *   sizes and makes real reading hard. Everywhere else is Hanken.
  *   Four Bodoni usages survive this rule:
  *     1. .title (wordmark — logo territory)
- *     2. .dispatch-number (01, 02 — single-glyph editorial ornament)
- *     3. .dispatch-title (upright, ≥1.6rem at clamp peak 2.4rem)
- *     4. .dispatch .items > .item:first-child summary::first-letter (drop cap)
- *   The .toc-num also uses Bodoni italic at ~1rem but as single digits
- *   + ✦ — the "one or two glyph" exception.
- *
- * Inlined into the final HTML by the Phase 4 renderer. Written here
- * as a separate sheet so future iteration is easy.
+ *     2. .dispatch-number (single-glyph editorial ornament)
+ *     3. .featured-title (>=2rem) and .dispatch-title (upright, >=1.6rem peak 2.4rem)
+ *     4. .featured-summary::first-letter (drop cap, 4.8rem)
  * ============================================================ */
 
 :root {
   /* ---- Color (OKLCH) ---- */
-  --paper:        oklch(98%  0.008  85);   /* warm off-white, ~#fbf6ec */
-  --paper-warm:   oklch(96%  0.015  82);   /* slightly toasted */
-  --paper-deep:   oklch(94%  0.020  82);   /* gold-leaf for Old Gold */
-  --ink:          oklch(20%  0.008  60);   /* near-black w/ warm cast */
+  --paper:        oklch(98%  0.008  85);
+  --paper-warm:   oklch(96%  0.015  82);
+  --paper-deep:   oklch(94%  0.020  82);
+  --ink:          oklch(20%  0.008  60);
   --ink-soft:     oklch(35%  0.010  60);
   --ink-muted:    oklch(50%  0.010  60);
   --ink-faint:    oklch(72%  0.010  70);
-  --ink-ghost:    oklch(84%  0.010  70);   /* for quieter numerals */
+  --ink-ghost:    oklch(84%  0.010  70);
   --rule:         oklch(86%  0.014  80);
   --rule-strong:  oklch(70%  0.016  70);
-  --accent:       oklch(44%  0.14   30);   /* weathered newsprint red */
+  --accent:       oklch(44%  0.14   30);
   --accent-soft:  oklch(58%  0.12   35);
 
   /* ---- Type ---- */
@@ -55,8 +55,9 @@
   --space-5xl: 8rem;
 
   /* ---- Reading widths ---- */
-  --reading: 36rem;   /* ~62ch with our body size */
-  --frame:   52rem;
+  --reading:    36rem;    /* ~62ch body column */
+  --frame:      52rem;    /* narrow frame */
+  --frame-wide: 64rem;    /* grid-scale frame */
 }
 
 /* ---- Reset ---- */
@@ -66,14 +67,12 @@ ol, ul { list-style: none; }
 hr { border: 0; }
 img { display: block; max-width: 100%; }
 
-/* ---- Document ---- */
 html {
   font-size: clamp(16px, 0.95vw + 0.5rem, 18px);
   background: var(--paper);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Default features only — ss01 scoped to the .ai wordmark where it matters */
   font-feature-settings: "kern", "liga";
 }
 
@@ -81,13 +80,13 @@ body {
   font-family: var(--body);
   font-weight: 400;
   line-height: 1.6;
-  max-width: var(--frame);
+  max-width: 68rem;
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 4vw, 2.5rem) var(--space-5xl);
 }
 
 /* ============================================================
- * Links — editorial, restrained
+ * Links
  * ============================================================ */
 a {
   color: inherit;
@@ -108,7 +107,7 @@ a:focus-visible {
 }
 
 /* ============================================================
- * Masthead — newspaper double rule, didone wordmark, AI accent
+ * Masthead
  * ============================================================ */
 .masthead {
   border-top: 3px solid var(--ink);
@@ -159,71 +158,9 @@ a:focus-visible {
   color: var(--accent);
   font-style: italic;
   font-weight: 500;
-  font-feature-settings: "ss01";          /* scoped here, not globally */
+  font-feature-settings: "ss01";
   letter-spacing: -0.04em;
-  /* Asymmetric optical pull — Bodoni italic "I" exits steeper on the right */
   margin: 0 -0.06em 0 -0.04em;
-}
-
-/* ============================================================
- * TOC — "Inside" contents manifest, between masthead and signal
- * ============================================================ */
-.toc {
-  max-width: var(--frame);
-  margin: 0 auto var(--space-3xl);
-  padding: var(--space-sm) 0 var(--space-md);
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: var(--space-md);
-  font-family: var(--body);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-.toc-label {
-  font-weight: 700;
-  color: var(--ink);
-  letter-spacing: 0.16em;
-  /* A small vertical rule separator after the label */
-  padding-right: var(--space-md);
-  border-right: 1px solid var(--rule);
-}
-.toc-item {
-  text-decoration: none;
-  color: var(--ink-muted);
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.45em;
-  transition: color 180ms ease-out;
-}
-.toc-item:hover,
-.toc-item:focus-visible {
-  color: var(--accent);
-  outline: none;
-}
-.toc-num {
-  font-family: var(--display);
-  font-weight: 400;
-  font-style: italic;
-  color: var(--ink-faint);
-  font-size: 1rem;
-  letter-spacing: 0;
-  text-transform: none;
-  font-variation-settings: "opsz" 18;
-  line-height: 1;
-}
-.toc-item:hover .toc-num,
-.toc-item:focus-visible .toc-num {
-  color: var(--accent);
-}
-.toc-item-gold .toc-num {
-  color: var(--accent);
-  font-style: normal;
-  font-size: 0.95rem;
 }
 
 /* ============================================================
@@ -231,7 +168,7 @@ a:focus-visible {
  * ============================================================ */
 .signal {
   max-width: var(--reading);
-  margin: var(--space-3xl) auto var(--space-4xl);
+  margin: var(--space-2xl) auto var(--space-3xl);
   text-align: center;
 }
 
@@ -254,163 +191,89 @@ a:focus-visible {
 }
 
 /* ============================================================
- * Dispatch sections — didone numerals, editorial titles,
- * header constrained to reading column so rule caps the text
+ * Featured row — 2-col split: featured (left) + Old Gold aside (right)
  * ============================================================ */
-.dispatch {
-  margin-top: var(--space-4xl);
-}
-
-.dispatch-header {
-  max-width: var(--reading);
-  margin-inline: auto;
+.featured-row {
+  max-width: var(--frame-wide);
+  margin: 0 auto var(--space-3xl);
   display: grid;
-  grid-template-columns: minmax(2.5rem, auto) 1fr;
-  align-items: end;
-  gap: clamp(0.75rem, 2vw, 1.25rem);
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: var(--space-md);
-  margin-bottom: var(--space-2xl);
+  grid-template-columns: 1.65fr 1fr;
+  gap: var(--space-2xl);
+  align-items: start;
 }
 
-.dispatch-number {
-  font-family: var(--display);
-  font-style: italic;
-  font-weight: 300;
-  font-size: clamp(2.2rem, 4.5vw, 3.2rem);
-  line-height: 0.85;
-  color: var(--ink-ghost);
-  font-variation-settings: "opsz" 96;
-  letter-spacing: -0.02em;
-  user-select: none;
+@media (max-width: 860px) {
+  .featured-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+  }
 }
 
-.dispatch-titling { padding-bottom: 0.15rem; }
-
-.dispatch-title {
-  font-family: var(--display);
-  font-weight: 500;
-  font-size: clamp(1.6rem, 3vw, 2.4rem);
-  line-height: 1.05;
-  letter-spacing: -0.015em;
-  color: var(--ink);
-  font-variation-settings: "opsz" 48;
+/* ---- Featured (the day's top story) ---- */
+.featured {
+  margin: 0;
 }
 
-.dispatch-subtitle {
-  font-family: var(--body);
-  font-size: 0.78rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  margin-top: var(--space-sm);
-}
-
-/* Long-form subtitles shouldn't be shouted in uppercase.
- * Old Gold's subtitle is always a sentence, not a tag. */
-.dispatch-gold .dispatch-subtitle {
-  font-family: var(--body);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 0.95rem;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--ink-soft);
-  line-height: 1.5;
-}
-
-/* ============================================================
- * Items — text-only, no cards, drop cap on first item
- * ============================================================ */
-.items {
-  max-width: var(--reading);
-  margin: 0 auto;
-}
-
-.item {
-  padding: var(--space-xl) 0;
-  border-bottom: 1px solid var(--rule);
-  position: relative;
-}
-.item:last-child { border-bottom: 0; padding-bottom: 0; }
-.item:first-child { padding-top: var(--space-md); }
-
-/* ---- Hero image — sits above title inside reading column,
- * aspect preserved, clipped by max-height so portrait images don't
- * dominate. Paper-warm bg shows during load / if image fails. ---- */
-.item-hero {
-  display: block;
-  margin: 0 0 var(--space-md);
+.featured-hero {
+  margin: 0 0 var(--space-lg);
   background: var(--paper-warm);
-  /* thin bottom rule acts as a newsprint-cut indicator */
-  border-bottom: 1px solid var(--rule);
 }
-.item-hero img {
+.featured-hero img {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 42vh;
+  max-height: min(56vh, 34rem);   /* cap on tall displays */
   object-fit: cover;
   object-position: center;
-  background: var(--paper-warm);
 }
-.item-hero figcaption {
+
+.featured-kicker {
   font-family: var(--body);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--ink-muted);
-  padding-top: var(--space-xs);
-  text-align: right;
-}
-.item-hero figcaption .credit-source {
-  color: var(--ink-faint);
+  color: var(--accent);
+  margin-bottom: var(--space-xs);
 }
 
-/* Old Gold inherits the same treatment but slightly shorter max-height
- * — archive clippings, not feature leads */
-.item-gold .item-hero img {
-  max-height: 32vh;
-}
-
-.item-title {
-  font-family: var(--body);
-  font-weight: 600;
-  font-size: 1.15rem;
-  line-height: 1.32;
-  letter-spacing: -0.005em;
-  margin-bottom: var(--space-sm);
+.featured-title {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(2rem, 4.5vw, 2.8rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  margin: var(--space-sm) 0 var(--space-md);
+  font-variation-settings: "opsz" 72;
   text-wrap: balance;
 }
-.item-title a {
+.featured-title a {
   text-decoration: none;
   color: var(--ink);
 }
-.item-title a:hover {
+.featured-title a:hover {
   color: var(--accent);
   text-decoration: underline;
-  text-decoration-thickness: 0.06em;
-  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.15em;
 }
 
-.item-summary {
+.featured-summary {
   font-family: var(--body);
-  font-size: 1rem;
-  line-height: 1.62;
-  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.65;
   margin-bottom: var(--space-md);
-  hanging-punctuation: first;
+  hanging-punctuation: first last;
+  text-wrap: pretty;
 }
 
-/* Drop cap on the first item of each dispatch — Bodoni capital */
-.dispatch .items > .item:first-child > .item-summary::first-letter {
+/* Drop cap on featured summary — red Bodoni capital */
+.featured-summary::first-letter {
   font-family: var(--display);
   font-weight: 500;
   font-style: normal;
   float: left;
-  font-size: 4.4rem;
+  font-size: 4.6rem;
   line-height: 0.82;
   margin: 0.06em 0.08em -0.05em 0;
   color: var(--accent);
@@ -418,13 +281,261 @@ a:focus-visible {
 }
 
 /* ============================================================
- * Why-it-matters — a continuation italic with inline red flag.
- * NO background, NO padding, NO zone. The editor's voice stays
- * inside the body column.
+ * Old Gold aside — single callback on the right rail of featured-row
+ * ============================================================ */
+.old-gold-aside {
+  background: var(--paper-deep);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  /* subtle hairlines top and bottom to echo the archival-pocket register */
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.old-gold-aside-kicker {
+  font-family: var(--body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.old-gold-aside-kicker .mark {
+  font-family: var(--display);
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.old-gold-aside-title {
+  font-family: var(--body);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+}
+.old-gold-aside-title a {
+  text-decoration: none;
+  color: var(--ink);
+}
+.old-gold-aside-title a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.old-gold-aside-summary {
+  font-family: var(--body);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ink);
+  hanging-punctuation: first last;
+}
+
+.old-gold-aside-resurface {
+  font-family: var(--body);
+  font-style: italic;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--rule-strong);
+  padding-top: var(--space-sm);
+  margin-top: var(--space-xs);
+}
+.old-gold-aside-resurface .mark {
+  color: var(--accent);
+  font-style: normal;
+  margin-right: 0.3em;
+}
+
+.old-gold-aside-meta {
+  font-family: var(--body);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: var(--space-xs);
+}
+.old-gold-aside-meta a {
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-faint);
+  text-decoration-thickness: 0.04em;
+  text-underline-offset: 0.18em;
+  margin-right: var(--space-sm);
+}
+
+/* ============================================================
+ * Front meta — a single muted line that announces the grid count
+ * (replaces the prior "The Morning's Dispatch" section header)
+ * ============================================================ */
+.front-meta {
+  max-width: var(--frame-wide);
+  margin: 0 auto var(--space-lg);
+  border-top: 1px solid var(--ink);
+  padding-top: var(--space-sm);
+  font-family: var(--body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.front-meta .dot { color: var(--ink-faint); }
+
+/* ============================================================
+ * Front grid — scannable stack of the day's items
+ * ============================================================ */
+.front-grid {
+  max-width: var(--frame-wide);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: var(--space-2xl);
+  padding: 0;
+}
+
+/* First item spans all columns — secondary feature, breaks the uniform grid */
+.front-grid .front-item:first-child {
+  grid-column: 1 / -1;
+}
+
+.front-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 var(--space-xl);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Spanner gets a slightly different internal layout: image left, text right */
+@media (min-width: 860px) {
+  .front-grid .front-item:first-child {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+  .front-grid .front-item:first-child .item-hero {
+    grid-row: 1 / span 6;
+    margin: 0;
+  }
+  .front-grid .front-item:first-child .item-title {
+    font-size: 1.4rem;
+  }
+  /* When spanner has no hero image, fall back to single column so the text
+   * doesn't stretch across an empty grid track */
+  .front-grid .front-item:first-child:not(:has(.item-hero)) {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Grid item hero thumbnail */
+.front-item .item-hero {
+  margin: 0 0 var(--space-md);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--paper-warm);
+}
+.front-item .item-hero img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+/* ---- Item meta: category tag + date, always rendered ---- */
+.item-meta {
+  font-family: var(--body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.item-category {
+  color: var(--accent);
+}
+.item-category--unfiled {
+  color: var(--ink-faint);
+}
+.item-date {
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+.item-category + .item-date::before {
+  content: "·";
+  margin-right: var(--space-xs);
+  color: var(--ink-faint);
+}
+
+/* ---- Grid item title / summary / why ---- */
+.front-item .item-title {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  margin-bottom: var(--space-sm);
+  text-wrap: balance;
+}
+.front-item .item-title a {
+  text-decoration: none;
+  color: var(--ink);
+}
+.front-item .item-title a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.18em;
+}
+
+.front-item .item-summary {
+  font-family: var(--body);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-bottom: var(--space-sm);
+  text-wrap: pretty;
+  hanging-punctuation: first last;
+}
+
+.front-item .item-why {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin-top: var(--space-xs);
+  margin-bottom: var(--space-sm);
+  color: var(--ink-soft);
+  max-width: none;
+}
+
+/* Source line — no longer pinned to bottom; sits naturally at content end */
+.front-item .item-source {
+  /* inherits .item-source base below */
+}
+
+/* ============================================================
+ * Why-it-matters (used by featured and grid items)
  * ============================================================ */
 .item-why {
   display: block;
-  clear: left;                /* push past the drop-cap float on short summaries */
+  clear: left;
   font-family: var(--body);
   font-size: 0.98rem;
   line-height: 1.58;
@@ -445,7 +556,7 @@ a:focus-visible {
 }
 .item-why-label::after {
   content: " —";
-  color: var(--ink-muted);  /* dash is a delimiter, not part of the red flag */
+  color: var(--ink-muted);
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -454,7 +565,9 @@ a:focus-visible {
   color: var(--ink);
 }
 
-/* ---- Source line — small, all-caps, one beat away ---- */
+/* ============================================================
+ * Source line (base for both featured and grid items)
+ * ============================================================ */
 .item-source {
   font-family: var(--body);
   font-size: 0.72rem;
@@ -475,16 +588,6 @@ a:focus-visible {
   text-underline-offset: 0.2em;
   text-decoration-color: var(--ink-faint);
 }
-.item-source a::before {
-  content: "↗";
-  display: inline-block;
-  margin-right: 0.3em;
-  font-style: normal;
-  text-decoration: none;
-  color: var(--ink-faint);       /* muted — accent is rationed */
-  font-size: 0.9em;
-  transform: translateY(-0.05em);
-}
 .item-source-time {
   color: var(--ink-faint);
   letter-spacing: 0.08em;
@@ -496,30 +599,126 @@ a:focus-visible {
 }
 
 /* ============================================================
- * Old Gold — gilded register, slightly different paper
+ * Old Gold archive pocket — full list below the grid
  * ============================================================ */
 .dispatch-gold {
+  max-width: var(--frame-wide);
+  margin: var(--space-4xl) auto 0;
   background: var(--paper-deep);
-  margin-left: calc(var(--space-lg) * -1);
-  margin-right: calc(var(--space-lg) * -1);
-  padding: var(--space-2xl) var(--space-lg) var(--space-2xl);
+  padding: var(--space-2xl) var(--space-xl);
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
 }
 
-.dispatch-number-gold {
-  color: var(--accent);
-  font-style: normal;
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
-  font-weight: 400;
-  line-height: 1;
+.dispatch-header {
+  display: grid;
+  grid-template-columns: minmax(2.5rem, auto) 1fr;
+  align-items: end;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+  padding-bottom: var(--space-md);
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--rule-strong);
 }
 
+.dispatch-number {
+  font-family: var(--display);
+  font-style: normal;
+  font-weight: 400;
+  color: var(--accent);
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.dispatch-titling { padding-bottom: 0.15rem; }
+
+.dispatch-title {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  font-variation-settings: "opsz" 48;
+}
+
+.dispatch-gold .dispatch-subtitle {
+  font-family: var(--body);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin-top: var(--space-xs);
+}
+
+.items {
+  max-width: var(--reading);
+  margin: 0 auto;
+}
+
+.item {
+  padding: var(--space-xl) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.item:last-child { border-bottom: 0; padding-bottom: 0; }
+.item:first-child { padding-top: var(--space-md); }
+
+.item-title {
+  font-family: var(--body);
+  font-weight: 600;
+  font-size: 1.15rem;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  margin-bottom: var(--space-sm);
+  text-wrap: balance;
+}
+.item-title a {
+  text-decoration: none;
+  color: var(--ink);
+}
+.item-title a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.item-summary {
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.62;
+  color: var(--ink);
+  margin-bottom: var(--space-md);
+  hanging-punctuation: first last;
+  text-wrap: pretty;
+}
+
+.item-hero {
+  display: block;
+  margin: 0 0 var(--space-md);
+  background: var(--paper-warm);
+}
+.item-hero img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 42vh;
+  object-fit: cover;
+  object-position: center;
+  background: var(--paper-warm);
+}
+
+/* Old Gold items */
 .item-gold .item-title {
   font-family: var(--body);
   font-weight: 600;
   font-style: italic;
   font-size: 1.15rem;
+}
+.item-gold .item-hero img {
+  max-height: 32vh;
 }
 
 .item-resurface {
@@ -536,7 +735,6 @@ a:focus-visible {
   line-height: 1.55;
   color: var(--ink-soft);
 }
-
 .item-resurface-mark {
   font-style: normal;
   color: var(--accent);
@@ -589,7 +787,7 @@ a:focus-visible {
 }
 
 /* ============================================================
- * Responsive — mobile collapses masthead grid + softens drop cap
+ * Responsive
  * ============================================================ */
 @media (max-width: 640px) {
   .masthead {
@@ -602,22 +800,11 @@ a:focus-visible {
     justify-self: center;
     text-align: center;
   }
-  .toc {
-    gap: var(--space-sm) var(--space-md);
+  .featured-summary::first-letter {
+    font-size: 3.6rem;
   }
-  .toc-label {
-    border-right: 0;
-    padding-right: 0;
-    width: 100%;
-    text-align: center;
-  }
-  .dispatch-header {
-    grid-template-columns: 1fr;
-    gap: var(--space-xs);
-  }
-  .dispatch-number { font-size: 2rem; line-height: 1; }
-  .dispatch .items > .item:first-child > .item-summary::first-letter {
-    font-size: 3.2rem;
+  .front-grid {
+    gap: var(--space-xl);
   }
   .dispatch-gold {
     margin-left: calc(var(--space-md) * -1);
@@ -625,6 +812,11 @@ a:focus-visible {
     padding-left: var(--space-md);
     padding-right: var(--space-md);
   }
+  .dispatch-header {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+  }
+  .dispatch-number { font-size: 2rem; }
 }
 
 /* ============================================================
@@ -637,6 +829,6 @@ a:focus-visible {
 @media print {
   body { max-width: none; padding: 1in; background: white; }
   a { color: var(--ink); text-decoration: none; }
-  .dispatch-gold { background: white; }
-  .toc { display: none; }
+  .dispatch-gold, .old-gold-aside { background: white; }
+  .featured-hero, .item-hero { page-break-inside: avoid; }
 }

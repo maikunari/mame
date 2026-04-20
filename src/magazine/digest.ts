@@ -95,6 +95,12 @@ export interface IssueStats {
   topCategory: string;
 }
 
+/** Item with its folder inlined. Used by the magazine-front layout
+ *  which flattens sections into a scannable grid. */
+export interface IssueItemWithFolder extends IssueItem {
+  folder: string;
+}
+
 export interface MagazineIssue {
   issueNumber: number;
   date: string;
@@ -102,6 +108,11 @@ export interface MagazineIssue {
   masthead: IssueMasthead;
   signal: string;
   sections: IssueSection[];
+  /** Designated top story of the issue — first item of the largest section.
+   *  Null when there are no items at all. Convenience derived from sections. */
+  featured: IssueItemWithFolder | null;
+  /** All other items, flattened in section order, folder inlined. */
+  rest: IssueItemWithFolder[];
   oldGold: IssueOldGold[];
   stats: IssueStats;
 }
@@ -144,6 +155,15 @@ export async function generateDailyDigest(opts: GenerateOptions = {}): Promise<G
   // 2. Group into sections by folder
   const sections = groupIntoSections(summarized);
 
+  // 2b. Derive a flattened scan-grid view — featured item + rest.
+  //     Featured = first item of first (largest) section. Sections is
+  //     already sorted largest-first in groupIntoSections.
+  const flatItems: IssueItemWithFolder[] = sections.flatMap((s) =>
+    s.items.map((i) => ({ ...i, folder: s.title }))
+  );
+  const featured: IssueItemWithFolder | null = flatItems[0] ?? null;
+  const rest: IssueItemWithFolder[] = flatItems.slice(1);
+
   // 3. Old Gold
   const oldGold = await pickAndExplainOldGold(records, summarized, piModel);
 
@@ -180,6 +200,8 @@ export async function generateDailyDigest(opts: GenerateOptions = {}): Promise<G
     },
     signal,
     sections,
+    featured,
+    rest,
     oldGold,
     stats: {
       savedToday: records.length,

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dAIly digest — Issue №2 · April 20, 2026</title>
-<meta name="description" content="Design preview populated with representative content from your real Issue #2. Used to iterate on the template before Phase 4 wires up the renderer.">
+<meta name="description" content="Design preview populated with representative content.">
 <meta name="theme-color" content="#f7f1e3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,124 +27,198 @@
     </p>
   </header>
 
-  <nav class="toc" aria-label="Contents">
-    <span class="toc-label">Inside</span>
-    <a class="toc-item" href="#claude-code">
-      <span class="toc-num">01</span>
-      <span class="toc-title">Claude Code</span>
-    </a>
-    <a class="toc-item" href="#design">
-      <span class="toc-num">02</span>
-      <span class="toc-title">Design</span>
-    </a>
-    <a class="toc-item toc-item-gold" href="#old-gold">
-      <span class="toc-num">✦</span>
-      <span class="toc-title">Old Gold</span>
-    </a>
-  </nav>
-
   <section class="signal" aria-label="Today's signal">
     <p class="signal-mark" aria-hidden="true">☞</p>
     <p class="signal-text">AI agents ship design tools, browser harnesses, and Shopify skills as Claude 4.7 tests accelerate.</p>
   </section>
 
-  <section class="dispatch" id="claude-code">
-    <header class="dispatch-header">
-      <span class="dispatch-number" aria-hidden="true">01</span>
-      <div class="dispatch-titling">
-        <h2 class="dispatch-title">Claude Code</h2>
-        <p class="dispatch-subtitle">New features &amp; shipped skills</p>
-      </div>
-    </header>
+  <!-- Featured row: the day's top story + an Old Gold callback on the right rail -->
+  <div class="featured-row">
 
-    <ol class="items">
-      <li class="item">
-        <figure class="item-hero">
-          <img src="https://picsum.photos/seed/browser-harness/1200/640" alt="" loading="lazy" decoding="async">
-        </figure>
-        <h3 class="item-title">
+    <article class="featured">
+      <figure class="featured-hero">
+        <img src="https://picsum.photos/seed/browser-harness-hero/1600/840" alt="" loading="eager" decoding="async">
+      </figure>
+      <div class="featured-body">
+        <p class="featured-kicker">Today's lead</p>
+        <p class="item-meta">
+          <span class="item-category">Claude Code</span>
+          <time class="item-date" datetime="2026-04-18T18:13:01Z">April 18, 2026</time>
+        </p>
+        <h2 class="featured-title">
           <a href="#" rel="noopener">Browser Harness — a self-healing browser framework</a>
-        </h3>
-        <p class="item-summary">Browser Harness is an open-source library that lets LLMs drive Chrome directly over CDP WebSocket with no intermediate framework. It includes a self-healing system that edits helper Python functions on-the-fly when tasks fail.</p>
+        </h2>
+        <p class="featured-summary">Browser Harness is an open-source library that lets LLMs drive Chrome directly over CDP WebSocket with no intermediate framework. It includes a self-healing system that edits helper Python functions on-the-fly when tasks fail.</p>
         <p class="item-why">
           <span class="item-why-label">Why it matters</span><span class="item-why-text">Drop-in alternative to Playwright/Puppeteer wrappers when you need a browser that adapts to the page instead of the other way around — useful for agent-driven scraping and QA pipelines Mike already runs.</span>
         </p>
         <p class="item-source">
           <a href="#" rel="noopener">via X</a>
-          <time class="item-source-time" datetime="2026-04-18T18:13:01Z">April 18, 2026</time>
         </p>
-      </li>
-
-      <li class="item">
-        <h3 class="item-title">
-          <a href="#" rel="noopener">/autofix-pr — Cursor's CI-loop command from the terminal</a>
-        </h3>
-        <p class="item-summary">/autofix-pr is a Cursor command that lets you trigger the cloud-based Autofix PR workflow directly from your terminal after pushing a branch. It uploads your full session context so the autofixer can resolve CI failures, address review comments, and iterate without manual intervention.</p>
-        <p class="item-why">
-          <span class="item-why-label">Why it matters</span><span class="item-why-text">Closes the loop on a PR in one CLI step instead of switching to the web UI, tightening the local-to-cloud dev workflow between "done coding" and "shipped with green CI."</span>
-        </p>
-        <p class="item-source">
-          <a href="#" rel="noopener">via X</a>
-          <time class="item-source-time" datetime="2026-04-17T09:22:00Z">April 17, 2026</time>
-        </p>
-      </li>
-
-      <li class="item">
-        <p class="item-summary">A developer built a local dashboard that parses the log files Claude Code already writes to disk, surfacing per-model and per-project token usage that Anthropic's official UI deliberately hides (only showing a single progress bar).</p>
-        <p class="item-why">
-          <span class="item-why-label">Why it matters</span><span class="item-why-text">Precise observability into token spend across projects and models without relying on a black-box vendor dashboard — directly useful when wiring Claude into your own dev tools, agents, or billing-aware workflows.</span>
-        </p>
-        <p class="item-source">
-          <a href="#" rel="noopener">via X</a>
-          <time class="item-source-time" datetime="2026-04-16T14:03:00Z">April 16, 2026</time>
-        </p>
-      </li>
-    </ol>
-  </section>
-
-  <section class="dispatch" id="design">
-    <header class="dispatch-header">
-      <span class="dispatch-number" aria-hidden="true">02</span>
-      <div class="dispatch-titling">
-        <h2 class="dispatch-title">Design</h2>
-        <p class="dispatch-subtitle">Craft, typography, and what's on the page</p>
       </div>
-    </header>
+    </article>
 
-    <ol class="items">
-      <li class="item">
-        <figure class="item-hero">
-          <img src="https://picsum.photos/seed/drams-rams/1200/700" alt="" loading="lazy" decoding="async">
-        </figure>
-        <h3 class="item-title">
-          <a href="#" rel="noopener">Drams — a Rams-inspired Framer component library</a>
-        </h3>
-        <p class="item-summary">A free collection of beautifully crafted, interactive Framer components (buttons, switches, sliders, dials, rotary radios, Braun-inspired shavers, OP-1 style keys) built with strict adherence to Dieter Rams' ten principles of good design. The site doubles as a remix platform where creators can submit and get featured.</p>
-        <p class="item-why">
-          <span class="item-why-label">Why it matters</span><span class="item-why-text">Production-ready, skeuomorphic UI assets that can drop straight into Framer prototypes or serve as high-fidelity reference when auditing the tactile feel of internal tools.</span>
-        </p>
-        <p class="item-source">
-          <a href="#" rel="noopener">via X</a>
-          <time class="item-source-time" datetime="2026-04-15T11:40:00Z">April 15, 2026</time>
-        </p>
-      </li>
+    <aside class="old-gold-aside" aria-label="Old Gold callback">
+      <p class="old-gold-aside-kicker">
+        <span class="mark" aria-hidden="true">✦</span>
+        <span>Old Gold</span>
+      </p>
+      <h3 class="old-gold-aside-title">
+        <a href="#" rel="noopener">OAuth 2.0 PKCE demystified — a walk-through</a>
+      </h3>
+      <p class="old-gold-aside-summary">A careful, diagram-heavy explainer of the OAuth 2.0 PKCE flow — the extension that makes public clients safe without a shared secret.</p>
+      <p class="old-gold-aside-resurface">
+        <span class="mark" aria-hidden="true">↺</span>Thematic match — today's pieces on MCP auth and Claude Code skills point right back to the PKCE post you saved last summer while wiring up the first version of Mame.
+      </p>
+      <p class="old-gold-aside-meta">
+        <a href="#" rel="noopener">via X</a>
+        <time datetime="2025-08-12T10:20:00Z">saved 251 days ago</time>
+      </p>
+    </aside>
 
-      <li class="item">
-        <h3 class="item-title">
-          <a href="#" rel="noopener">Clone any site's rendered DOM with Claude + Chrome MCP</a>
-        </h3>
-        <p class="item-summary">A Claude-powered skill that uses Chrome's MCP to inspect a live website's rendered DOM, fonts, colors, and layout, then generates a pixel-perfect clone in a single prompt. The full implementation is open source on GitHub.</p>
-        <p class="item-why">
-          <span class="item-why-label">Why it matters</span><span class="item-why-text">Practical pattern for letting an LLM read the browser's live computed styles instead of guessing from screenshots — the kind of high-fidelity, tool-augmented workflow that beats "describe this design" by a wide margin.</span>
-        </p>
-        <p class="item-source">
-          <a href="#" rel="noopener">via X</a>
-          <time class="item-source-time" datetime="2026-04-14T08:15:00Z">April 14, 2026</time>
-        </p>
-      </li>
-    </ol>
-  </section>
+  </div>
 
+  <!-- Single muted line announces the grid -->
+  <p class="front-meta">
+    <span>99 items</span>
+    <span class="dot" aria-hidden="true">·</span>
+    <span>April 20, 2026</span>
+  </p>
+
+  <!-- Scannable grid; first item spans all cols as a secondary feature -->
+  <ol class="front-grid">
+
+    <li class="front-item">
+      <figure class="item-hero">
+        <img src="https://picsum.photos/seed/autofix-pr/1400/800" alt="" loading="lazy" decoding="async">
+      </figure>
+      <p class="item-meta">
+        <span class="item-category">Claude Code</span>
+        <time class="item-date" datetime="2026-04-17T09:22:00Z">April 17, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">/autofix-pr — Cursor's CI-loop command from the terminal</a>
+      </h3>
+      <p class="item-summary">/autofix-pr is a Cursor command that lets you trigger the cloud-based Autofix PR workflow directly from your terminal after pushing a branch. It uploads your full session context so the autofixer can resolve CI failures, address review comments, and iterate without manual intervention.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Closes the loop on a PR in one CLI step instead of switching to the web UI, tightening the local-to-cloud dev workflow.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <p class="item-meta">
+        <span class="item-category">Claude Code</span>
+        <time class="item-date" datetime="2026-04-16T14:03:00Z">April 16, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">Local token-spend dashboard parsing Claude Code logs</a>
+      </h3>
+      <p class="item-summary">A developer built a local dashboard that parses the log files Claude Code already writes to disk, surfacing per-model and per-project token usage that Anthropic's official UI deliberately hides.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Precise observability into token spend without a black-box vendor dashboard.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <figure class="item-hero">
+        <img src="https://picsum.photos/seed/drams-rams/1200/700" alt="" loading="lazy" decoding="async">
+      </figure>
+      <p class="item-meta">
+        <span class="item-category">Design</span>
+        <time class="item-date" datetime="2026-04-15T11:40:00Z">April 15, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">Drams — a Rams-inspired Framer component library</a>
+      </h3>
+      <p class="item-summary">A free collection of beautifully crafted, interactive Framer components built with strict adherence to Dieter Rams' ten principles of good design.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Production-ready, skeuomorphic UI assets that drop straight into Framer prototypes.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <p class="item-meta">
+        <span class="item-category item-category--unfiled">Unfiled</span>
+        <time class="item-date" datetime="2026-04-14T08:15:00Z">April 14, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">Clone any site's rendered DOM with Claude + Chrome MCP</a>
+      </h3>
+      <p class="item-summary">A Claude-powered skill that uses Chrome's MCP to inspect a live website's rendered DOM, fonts, colors, and layout, then generates a pixel-perfect clone in a single prompt.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Practical pattern for letting an LLM read the browser's live computed styles instead of guessing from screenshots.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <figure class="item-hero">
+        <img src="https://picsum.photos/seed/claude-design/1200/700" alt="" loading="lazy" decoding="async">
+      </figure>
+      <p class="item-meta">
+        <span class="item-category">AI</span>
+        <time class="item-date" datetime="2026-04-17T15:03:46Z">April 17, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">Claude Design by Anthropic Labs — prototypes by talking</a>
+      </h3>
+      <p class="item-summary">A new Anthropic Labs product lets you collaborate with Claude Opus 4.7 to create polished prototypes, slides, and one-pagers through conversation.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Direct reference for how Anthropic positions voice-driven design work.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <p class="item-meta">
+        <span class="item-category">Shopify</span>
+        <time class="item-date" datetime="2026-04-17T10:00:00Z">April 17, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">63 Shopify Admin API agent skills, open-sourced</a>
+      </h3>
+      <p class="item-summary">Open-source repo of 63 pre-built Claude/Code/Cursor agent skills connecting directly to the Shopify Admin API — cart recovery, inventory auditing, revenue reports, bulk price updates, more.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">Battle-tested MCP-style tools that drop into your AI workflows and save days of GraphQL scaffolding.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+    <li class="front-item">
+      <p class="item-meta">
+        <span class="item-category">SEO</span>
+        <time class="item-date" datetime="2026-04-17T15:54:53Z">April 17, 2026</time>
+      </p>
+      <h3 class="item-title">
+        <a href="#" rel="noopener">Free backlinks from Common Crawl's web graph</a>
+      </h3>
+      <p class="item-summary">A 40-line bash script uses Common Crawl's public domain-level hyperlink graph plus DuckDB to fetch all known backlinks to any domain for free.</p>
+      <p class="item-why">
+        <span class="item-why-label">Why it matters</span><span class="item-why-text">On-demand, zero-cost backlink data without paying for Ahrefs or Majestic.</span>
+      </p>
+      <p class="item-source">
+        <a href="#" rel="noopener">via X</a>
+      </p>
+    </li>
+
+  </ol>
+
+  <!-- Full Old Gold archive pocket, gilded -->
   <section class="dispatch dispatch-gold" id="old-gold">
     <header class="dispatch-header">
       <span class="dispatch-number dispatch-number-gold" aria-hidden="true">✦</span>
@@ -177,7 +251,7 @@
         <h3 class="item-title">
           <a href="#" rel="noopener">"Fewer tools = more reliable agent"</a>
         </h3>
-        <p class="item-summary">A short manifesto on LLM agent design: the fewer tools you give a model, the more reliably it will use them. Examples from production systems that ripped out tool surface area and watched reliability climb.</p>
+        <p class="item-summary">A short manifesto on LLM agent design: the fewer tools you give a model, the more reliably it will use them.</p>
         <aside class="item-resurface" aria-label="Resurface reason">
           <span class="item-resurface-mark" aria-hidden="true">↺</span>
           <span class="item-resurface-text">Directly echoes today's Shopify-skills piece — both argue that agent quality compounds inversely with API surface area.</span>
